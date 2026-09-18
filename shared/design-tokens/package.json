@@ -1,0 +1,8 @@
+{
+  "name": "@pokket-pizza/design-tokens",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Pokket Pizza — CSS custom properties (design tokens)",
+  "main": "tokens.css",
+  "types": "tokens.css"
+}
