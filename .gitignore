@@ -1,0 +1,78 @@
+# =============================================================
+# POKKET PIZZA — .gitignore
+# =============================================================
+
+# --- Node / Package managers ---
+node_modules/
+.pnp
+.pnp.js
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# --- Build outputs ---
+dist/
+build/
+out/
+.next/
+.nuxt/
+.vite/
+*.min.js
+*.min.css
+
+# --- Environment variables ---
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# --- OS files ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# --- Editor / IDE ---
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.swp
+*.bak
+
+# --- Logs ---
+logs/
+*.log
+
+# --- Testing ---
+coverage/
+.nyc_output/
+
+# --- Temp / cache ---
+.cache/
+.parcel-cache/
+tmp/
+temp/
+
+# --- Design source files (binary — not diffable) ---
+# docs/ is NOT ignored — only binary design files inside it
+# docs/*.fig
+# docs/*.pdf
+# docs/*.sketch
+# docs/*.xd
+docs/

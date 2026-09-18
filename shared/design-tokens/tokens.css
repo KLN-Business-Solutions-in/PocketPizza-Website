@@ -1,0 +1,128 @@
+/* =============================================================
+   POKKET PIZZA — Design Tokens
+   Source of truth: docs/POKKET_PIZZA_DESIGN_SPEC.md
+   Generated from: Untitled.fig (4,301 nodes)
+   ============================================================= */
+
+:root {
+
+  /* -----------------------------------------------------------
+     BRAND
+  ----------------------------------------------------------- */
+  --color-brand-red:          #D62828;
+
+  /* -----------------------------------------------------------
+     NEUTRAL / TEXT
+  ----------------------------------------------------------- */
+  --color-charcoal:           #2B2B2B;
+  --color-charcoal-alt:       #3B3B3B;
+  --color-black:              #000000;
+  --color-body-secondary:     #615E5A;
+  --color-muted-warm-gray:    #969089;
+  --color-white:              #FFFFFF;
+
+  /* -----------------------------------------------------------
+     BACKGROUNDS
+  ----------------------------------------------------------- */
+  --color-cream-bg:           #FFF8F0;   /* Primary light-theme page bg */
+  --color-off-white-alt:      #FFFDF9;   /* Secondary light bg */
+  --color-cream-alt:          #FFF5E6;   /* Section bg variant */
+  --color-blush-tint:         #FDF0EE;   /* Badges / highlights */
+  --color-neutral-tint:       #F5F3EE;   /* Neutral card bg */
+
+  /* -----------------------------------------------------------
+     SEMANTIC / STATUS
+  ----------------------------------------------------------- */
+  --color-success-bg:         #E8FDF0;
+  --color-error-bg:           #FFF0EE;
+  --color-warning:            #FF9500;
+  --color-star-rating:        #FFC107;
+  --color-whatsapp:           #25D366;
+  --color-info:               #007AFF;
+
+  /* -----------------------------------------------------------
+     BORDER / STROKE
+  ----------------------------------------------------------- */
+  --color-border-default:     #EADCC9;   /* 327× — most common */
+  --color-border-active:      #D62828;   /* 155× — active / focus */
+  --color-border-dark:        #2B2B2B;
+  --color-border-white:       #FFFFFF;   /* On dark surfaces */
+
+  /* -----------------------------------------------------------
+     TYPOGRAPHY
+  ----------------------------------------------------------- */
+  --font-heading:             'Outfit', sans-serif;   /* 1,046 uses */
+  --font-body:                'Inter',  sans-serif;   /* 383 uses  */
+
+  /* Font weights */
+  --fw-regular:               400;
+  --fw-medium:                500;
+  --fw-semibold:              600;
+  --fw-bold:                  700;
+  --fw-extrabold:             800;
+
+  /* Type scale — confirmed from design */
+  --text-display-xl:          56px;   /* Largest hero headline */
+  --text-display-l:           48px;   /* Hero alt */
+  --text-h1:                  40px;   /* Mobile hero / desktop H2 */
+  --text-h1-alt:              36px;
+  --text-h2:                  28px;
+  --text-h3:                  24px;
+  --text-h4:                  18px;
+  --text-h4-alt:              16px;
+  --text-button:              16px;
+  --text-label:               14px;
+  --text-body:                14px;   /* Primary body (Inter Regular) */
+  --text-caption:             12px;
+  --text-tag:                 11px;
+
+  /* Line height */
+  --lh-tight:                 1;        /* Default UI (most text nodes) */
+  --lh-body:                  1.5;      /* Long-form paragraph copy */
+
+  /* -----------------------------------------------------------
+     SPACING SCALE  (8px root)
+  ----------------------------------------------------------- */
+  --space-1:    4px;
+  --space-2:    8px;
+  --space-3:    12px;   /* Most-used: 1,012× */
+  --space-4:    16px;   /* Most-used: 934×  */
+  --space-5:    20px;
+  --space-6:    24px;   /* 510× */
+  --space-8:    32px;
+  --space-10:   40px;
+  --space-12:   48px;
+  --space-16:   64px;
+
+  /* -----------------------------------------------------------
+     BORDER RADIUS SCALE
+  ----------------------------------------------------------- */
+  --radius-xs:    6px;    /* Small tags */
+  --radius-sm:    8px;    /* Inputs, badges — 151× */
+  --radius-md:    12px;   /* Standard card/button — 147× */
+  --radius-lg:    16px;   /* Product cards — 98× */
+  --radius-xl:    20px;   /* Section/hero cards — 75× */
+  --radius-2xl:   26px;   /* Pills / large buttons — 45× */
+  --radius-modal: 18px;   /* Modals / panels — 33× */
+  --radius-pill:  100px;  /* Avatars, fully-rounded — 35× */
+
+  /* -----------------------------------------------------------
+     ELEVATION / SHADOWS
+  ----------------------------------------------------------- */
+  --shadow-card:      0px 6px 16px rgba(71, 60, 53, 0.06);  /* Soft — most common */
+  --shadow-elevated:  0px 4px 12px rgba(0,  0,  0,  0.20);  /* Modals / dropdowns */
+
+  /* -----------------------------------------------------------
+     BORDER WEIGHTS
+  ----------------------------------------------------------- */
+  --border-default:   1px;    /* 3,878× */
+  --border-emphasis:  2px;    /* 364×   */
+  --border-icon:      1.5px;  /* Icon strokes */
+
+  /* -----------------------------------------------------------
+     LAYOUT BREAKPOINTS
+  ----------------------------------------------------------- */
+  --bp-mobile:   375px;   /* Customer mobile */
+  --bp-desktop:  1440px;  /* Customer desktop */
+  --bp-admin:    1446px;  /* Admin desktop */
+}

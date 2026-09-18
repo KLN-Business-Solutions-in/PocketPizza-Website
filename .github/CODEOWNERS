@@ -1,0 +1,34 @@
+# ============================================================
+# CODEOWNERS — PocketPizza Website Monorepo
+# ============================================================
+# Each line is a file pattern followed by one or more owners.
+# Order matters: last matching pattern wins.
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+# ============================================================
+#
+# Reviewer 1: @Rajal-ui
+# Reviewer 2: @piyushkrr24
+# ============================================================
+
+# --- Global fallback: all files ---
+*                               @Rajal-ui @piyushkrr24
+
+# --- GitHub config & CI ---
+.github/                        @Rajal-ui @piyushkrr24
+
+# --- Customer-facing frontend ---
+apps/customer/                  @Rajal-ui @piyushkrr24
+
+# --- Admin panel ---
+apps/admin/                     @Rajal-ui @piyushkrr24
+
+# --- Shared design tokens & packages ---
+packages/                       @Rajal-ui @piyushkrr24
+
+# --- Documentation ---
+docs/                           @Rajal-ui @piyushkrr24
+
+# --- Root config files ---
+*.json                          @Rajal-ui @piyushkrr24
+*.md                            @Rajal-ui @piyushkrr24
+.gitignore                      @Rajal-ui @piyushkrr24
