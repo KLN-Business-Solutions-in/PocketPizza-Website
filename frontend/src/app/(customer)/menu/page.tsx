@@ -7,4 +7,8 @@ export default function MenuPage() {
       <MenuContent />
     </div>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 5914e06c3ee1682a8fe57220c1ccfa89ef2522a2
