@@ -76,3 +76,9 @@ temp/
 # docs/*.sketch
 # docs/*.xd
 docs/
+doc/
+AGENTS.md   
+opencode.json
+.opencode/
+skills-lock.json
+.agents/
