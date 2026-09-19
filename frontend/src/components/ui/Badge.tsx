@@ -1,18 +1,21 @@
 import React from "react";
+import type { DietaryType } from "@shared/contracts";
 import { cn } from "@/lib/utils";
 
-export const VegNonVegBadge: React.FC<{ type: "VEG" | "NON_VEG"; className?: string }> = ({ type, className }) => {
-  const isVeg = type === "VEG";
+export const VegNonVegBadge: React.FC<{ type: DietaryType; className?: string }> = ({ type, className }) => {
+  const borderColor = type === "VEG" ? "border-green-600" : type === "EGG" ? "border-yellow-500" : "border-brand-red";
+  const dotColor = type === "VEG" ? "bg-green-600" : type === "EGG" ? "bg-yellow-500" : "bg-brand-red";
+  const title = type === "VEG" ? "Vegetarian" : type === "EGG" ? "Contains egg" : "Non-Vegetarian";
   return (
     <div
       className={cn(
         "inline-flex items-center justify-center w-4 h-4 p-0.5 border bg-white rounded-xs",
-        isVeg ? "border-green-600" : "border-brand-red",
+        borderColor,
         className
       )}
-      title={isVeg ? "Vegetarian" : "Non-Vegetarian"}
+      title={title}
     >
-      <div className={cn("w-2 h-2 rounded-full", isVeg ? "bg-green-600" : "bg-brand-red")} />
+      <div className={cn("w-2 h-2 rounded-full", dotColor)} />
     </div>
   );
 };
