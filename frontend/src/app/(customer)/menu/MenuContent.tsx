@@ -21,8 +21,8 @@ export function MenuContent() {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Hero Title Section */}
-      <section className="bg-cream-alt p-6 rounded-xl border border-border-default">
+      {/* Intro banner */}
+      <section className="rounded-2xl bg-white p-5 shadow-card ring-1 ring-border-default md:p-6">
         <h1 className="font-heading font-extrabold text-h2 md:text-h1 text-charcoal">
           Freshly Baked Pizzas & Sides
         </h1>
@@ -63,9 +63,9 @@ export function MenuContent() {
             />
           )}
 
-          {/* Responsive Item Grid: 1 col @375px, 2 cols @768px (md), 3 cols @1024px (lg) */}
+          {/* Responsive Item Grid: 1 col mobile, 2 cols sm, 3 cols lg */}
           {!isLoading && !isError && filteredProducts.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {filteredProducts.map((product) => (
                 <MenuItemCard
                   key={product.id}
