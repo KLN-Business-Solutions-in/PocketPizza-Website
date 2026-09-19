@@ -1,0 +1,6 @@
+{
+  "name": "@pokket-pizza/contract",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Pokket Pizza — Frozen API contract (shared types + Zod schemas)"
+}
