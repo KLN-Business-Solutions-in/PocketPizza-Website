@@ -9,11 +9,25 @@
     "shared/*"
   ],
   "scripts": {
+    "dev": "concurrently \"npm run dev:customer\" \"npm run dev:admin\" \"npm run dev:backend\"",
+    "build": "npm run build:customer && npm run build:admin && npm run build:backend",
     "dev:customer": "cd frontend/customer && npx serve .",
-    "dev:admin":    "cd frontend/admin    && npx serve .",
-    "dev:backend":  "cd backend           && npm run dev"
+    "dev:admin": "cd frontend/admin    && npx serve .",
+    "dev:backend": "cd backend           && npm run dev",
+    "build:customer": "cd frontend/customer && npm run build",
+    "build:admin": "cd frontend/admin && npm run build",
+    "build:backend": "cd backend && npm run build"
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5",
+    "zod": "^4.6.5"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
   }
 }
