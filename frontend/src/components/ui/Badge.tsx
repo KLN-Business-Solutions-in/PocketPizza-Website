@@ -1,11 +1,20 @@
 import React from "react";
-import type { DietaryType } from "@shared/contracts";
 import { cn } from "@/lib/utils";
 
-export const VegNonVegBadge: React.FC<{ type: DietaryType; className?: string }> = ({ type, className }) => {
-  const borderColor = type === "VEG" ? "border-green-600" : type === "EGG" ? "border-yellow-500" : "border-brand-red";
-  const dotColor = type === "VEG" ? "bg-green-600" : type === "EGG" ? "bg-yellow-500" : "bg-brand-red";
-  const title = type === "VEG" ? "Vegetarian" : type === "EGG" ? "Contains egg" : "Non-Vegetarian";
+/**
+ * Veg indicator — canonical contract uses `isVeg: boolean` (§7 menu).
+ * Legacy `dietaryType` (VEG/NON_VEG/EGG) is removed.
+ */
+export const VegNonVegBadge: React.FC<{
+  isVeg: boolean;
+  /** @deprecated pass isVeg instead */
+  type?: "VEG" | "NON_VEG" | "EGG" | boolean;
+  className?: string;
+}> = ({ isVeg, type, className }) => {
+  const veg = typeof type === "boolean" ? type : typeof type === "string" ? type === "VEG" : isVeg;
+  const borderColor = veg ? "border-green-600" : "border-brand-red";
+  const dotColor = veg ? "bg-green-600" : "bg-brand-red";
+  const title = veg ? "Vegetarian" : "Non-Vegetarian";
   return (
     <div
       className={cn(

@@ -1,166 +1,169 @@
-import { Category, Product, Order } from "../../../shared/contracts";
+import type {
+  AdminOrderDetail,
+  Category,
+  CreateOrderResponse,
+  InvoiceResponse,
+  MenuItem,
+  OrderStatusResponse,
+  QuoteResponse,
+} from "@shared/contract/contract";
+
+/**
+ * Canonical mock data — Backend Master Reference §7, §10, §11.
+ * Money = decimal strings (INR). Categories nest items.
+ * Statuses: NEW/CONFIRMED/PREPARING/READY/OUT_FOR_DELIVERY/COMPLETED/CANCELLED.
+ */
+
+const item1: MenuItem = {
+  id: "prod-1",
+  name: "Classic Margherita",
+  description: "San Marzano tomato sauce, fresh mozzarella, and basil drizzle.",
+  basePrice: "299.00",
+  imageUrl: "https://images.unsplash.com/photo-1604382354936-07c5d9983bd3",
+  isVeg: true,
+  variants: [
+    { id: "v1-s", label: 'Small (8")', priceDelta: "0.00" },
+    { id: "v1-m", label: 'Medium (12")', priceDelta: "100.00" },
+    { id: "v1-l", label: 'Large (14")', priceDelta: "200.00" },
+  ],
+  addOns: [
+    { id: "a1", label: "Extra Cheese", price: "40.00" },
+    { id: "a2", label: "Garlic Crust Drizzle", price: "25.00" },
+  ],
+};
+
+const item2: MenuItem = {
+  id: "prod-2",
+  name: "Fiery Pepperoni",
+  description: "Double pepperoni, hot honey drizzle, crushed red pepper, mozzarella.",
+  basePrice: "399.00",
+  imageUrl: "https://images.unsplash.com/photo-1628840042765-356cda07504e",
+  isVeg: false,
+  variants: [
+    { id: "v2-s", label: 'Small (8")', priceDelta: "0.00" },
+    { id: "v2-m", label: 'Medium (12")', priceDelta: "120.00" },
+  ],
+  addOns: [{ id: "a1", label: "Extra Cheese", price: "40.00" }],
+};
+
+const item3: MenuItem = {
+  id: "prod-6",
+  name: "Garlic Butter Dough Balls",
+  description: "Freshly baked dough balls with garlic butter dip.",
+  basePrice: "129.00",
+  imageUrl: "https://images.unsplash.com/photo-1541745537411-b8046dc6d66c",
+  isVeg: true,
+  variants: [],
+  addOns: [],
+};
+
+const item4: MenuItem = {
+  id: "prod-9",
+  name: "Craft Mint Lemonade",
+  description: "Freshly squeezed lemons infused with crushed mint leaves.",
+  basePrice: "79.00",
+  imageUrl: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd",
+  isVeg: true,
+  variants: [],
+  addOns: [],
+};
 
 export const MOCK_CATEGORIES: Category[] = [
-  { id: "cat-1", name: "Pizzas", slug: "pizzas", displayOrder: 1 },
-  { id: "cat-2", name: "Sides", slug: "sides", displayOrder: 2 },
-  { id: "cat-3", name: "Drinks", slug: "drinks", displayOrder: 3 },
+  { id: "cat-1", name: "Pizzas", sortOrder: 1, items: [item1, item2] },
+  { id: "cat-2", name: "Sides", sortOrder: 2, items: [item3] },
+  { id: "cat-3", name: "Drinks", sortOrder: 3, items: [item4] },
 ];
 
-export const MOCK_PRODUCTS: Product[] = [
-  {
-    id: "prod-1",
-    categoryId: "cat-1",
-    name: "Classic Margherita",
-    description: "San Marzano tomato sauce, fresh mozzarella, and basil drizzle.",
-    basePrice: 1299,
-    dietaryType: "VEG",
-    imageUrl: "https://images.unsplash.com/photo-1604382354936-07c5d9983bd3",
-    isAvailable: true,
-    variants: [
-      { id: "v1-s", name: "Small (8\")", priceOffset: 0 },
-      { id: "v1-m", name: "Medium (12\")", priceOffset: 400 },
-      { id: "v1-l", name: "Large (14\")", priceOffset: 800 },
-    ],
-    addOns: [{ id: "a1", name: "Extra Cheese", price: 150 }, { id: "a2", name: "Garlic Crust Drizzle", price: 99 }],
-  },
-  {
-    id: "prod-2",
-    categoryId: "cat-1",
-    name: "Fiery Pepperoni",
-    description: "Double pepperoni, hot honey drizzle, crushed red pepper, and mozzarella.",
-    basePrice: 1599,
-    dietaryType: "NON_VEG",
-    imageUrl: "https://images.unsplash.com/photo-1628840042765-356cda07504e",
-    isAvailable: true,
-    variants: [
-      { id: "v2-s", name: "Small (8\")", priceOffset: 0 },
-      { id: "v2-m", name: "Medium (12\")", priceOffset: 500 },
-      { id: "v2-l", name: "Large (14\")", priceOffset: 950 },
-    ],
-    addOns: [{ id: "a1", name: "Extra Cheese", price: 150 }],
-  },
-  {
-    id: "prod-3",
-    categoryId: "cat-1",
-    name: "Tandoori Paneer Delight",
-    description: "Spiced paneer cubes, red onions, green capsicum, and coriander.",
-    basePrice: 1499,
-    dietaryType: "VEG",
-    imageUrl: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38",
-    isAvailable: true,
-    variants: [
-      { id: "v3-s", name: "Small (8\")", priceOffset: 0 },
-      { id: "v3-m", name: "Medium (12\")", priceOffset: 450 },
-    ],
-    addOns: [{ id: "a1", name: "Extra Cheese", price: 150 }],
-  },
-  {
-    id: "prod-4",
-    categoryId: "cat-1",
-    name: "BBQ Smoked Chicken",
-    description: "Smoked chicken breast, red onion, smoky BBQ base, and mozzarella.",
-    basePrice: 1699,
-    dietaryType: "NON_VEG",
-    imageUrl: "https://images.unsplash.com/photo-1513104890138-7c749659a591",
-    isAvailable: true,
-    variants: [{ id: "v4-m", name: "Medium (12\")", priceOffset: 0 }],
-    addOns: [{ id: "a1", name: "Extra Cheese", price: 150 }],
-  },
-  {
-    id: "prod-5",
-    categoryId: "cat-1",
-    name: "Egg & Bacon Breakfast Pizza",
-    description: "Sunny side egg, crispy bacon, and white cheddar blend.",
-    basePrice: 1549,
-    dietaryType: "EGG",
-    imageUrl: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002",
-    isAvailable: true,
-    variants: [],
-    addOns: [],
-  },
-  {
-    id: "prod-6",
-    categoryId: "cat-2",
-    name: "Garlic Butter Dough Balls",
-    description: "Freshly baked dough balls with garlic butter dip.",
-    basePrice: 499,
-    dietaryType: "VEG",
-    imageUrl: "https://images.unsplash.com/photo-1541745537411-b8046dc6d66c",
-    isAvailable: true,
-    variants: [],
-    addOns: [],
-  },
-  {
-    id: "prod-7",
-    categoryId: "cat-2",
-    name: "Spicy Buffalo Wings",
-    description: "6 pieces of crisp wings tossed in tangy cayenne pepper sauce.",
-    basePrice: 699,
-    dietaryType: "NON_VEG",
-    imageUrl: "https://images.unsplash.com/photo-1567620832903-9fc6debc209f",
-    isAvailable: true,
-    variants: [],
-    addOns: [],
-  },
-  {
-    id: "prod-8",
-    categoryId: "cat-2",
-    name: "Cheesy Garlic Bread",
-    description: "Toasted baguette loaded with garlic butter and melted mozzarella.",
-    basePrice: 549,
-    dietaryType: "VEG",
-    imageUrl: "https://images.unsplash.com/photo-1573140247632-f8fd74997d5c",
-    isAvailable: true,
-    variants: [],
-    addOns: [],
-  },
-  {
-    id: "prod-9",
-    categoryId: "cat-3",
-    name: "Craft Mint Lemonade",
-    description: "Freshly squeezed lemons infused with crushed mint leaves.",
-    basePrice: 299,
-    dietaryType: "VEG",
-    imageUrl: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd",
-    isAvailable: true,
-    variants: [],
-    addOns: [],
-  },
-  {
-    id: "prod-10",
-    categoryId: "cat-3",
-    name: "Classic Cola",
-    description: "Chilled 330ml glass bottle.",
-    basePrice: 199,
-    dietaryType: "VEG",
-    imageUrl: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97",
-    isAvailable: true,
-    variants: [],
-    addOns: [],
-  },
-];
+export const MOCK_PRODUCTS: MenuItem[] = MOCK_CATEGORIES.flatMap((c) => c.items);
 
-export const MOCK_ORDERS: Order[] = [
-  {
-    orderNumber: "ORD-8812",
-    status: "PREPARING",
-    customerName: "Alex Mercer",
-    customerPhone: "+15550192834",
-    deliveryAddress: "42 Wallaby Way, Sydney",
-    subtotal: 1798,
-    tax: 180,
-    deliveryFee: 250,
-    total: 2228,
-    createdAt: new Date().toISOString(),
-    items: [
-      {
-        id: "item-1",
-        productName: "Classic Margherita",
-        variantName: "Medium (12\")",
-        addOnNames: ["Extra Cheese"],
-        quantity: 1,
-        price: 1849,
-      },
-    ],
+export const MOCK_PUBLIC_TOKEN = "ckmockpublictoken1";
+export const MOCK_ORDER_NUMBER = "ORD-20260214-001";
+
+export const MOCK_ORDER: OrderStatusResponse = {
+  orderNumber: MOCK_ORDER_NUMBER,
+  publicToken: MOCK_PUBLIC_TOKEN,
+  status: "CONFIRMED",
+  orderType: "DELIVERY",
+  items: [
+    {
+      menuItemId: "prod-1",
+      nameSnapshot: "Classic Margherita",
+      variantSnapshot: 'Medium (12")',
+      addOnSnapshot: [{ label: "Extra Cheese", price: "40.00" }],
+      quantity: 1,
+      unitPrice: "439.00",
+      lineTotal: "439.00",
+    },
+  ],
+  subtotal: "439.00",
+  deliveryFee: "30.00",
+  tax: "0.00",
+  total: "469.00",
+  notes: null,
+  createdAt: new Date().toISOString(),
+};
+
+export const MOCK_INVOICE: InvoiceResponse = {
+  orderNumber: MOCK_ORDER_NUMBER,
+  status: "CONFIRMED",
+  orderType: "DELIVERY",
+  customer: { name: "Anjali", phone: "9876543210" },
+  address: {
+    line1: "Flat 203",
+    line2: "ABC Society",
+    landmark: "Near Park",
+    city: "Pune",
+    pincode: "411001",
   },
-];
+  items: [
+    {
+      nameSnapshot: "Classic Margherita",
+      variantSnapshot: 'Medium (12")',
+      addOnSnapshot: [{ label: "Extra Cheese", price: "40.00" }],
+      quantity: 1,
+      unitPrice: "439.00",
+      lineTotal: "439.00",
+    },
+  ],
+  subtotal: "439.00",
+  deliveryFee: "30.00",
+  tax: "0.00",
+  total: "469.00",
+  paymentMethod: "PAY_AT_STORE",
+  createdAt: new Date().toISOString(),
+};
+
+export const MOCK_QUOTE: QuoteResponse = {
+  items: MOCK_ORDER.items,
+  subtotal: "439.00",
+  deliveryFee: "30.00",
+  tax: "0.00",
+  total: "469.00",
+};
+
+export const MOCK_CREATE_ORDER: CreateOrderResponse = {
+  orderNumber: MOCK_ORDER_NUMBER,
+  publicToken: MOCK_PUBLIC_TOKEN,
+  status: "NEW",
+  subtotal: "439.00",
+  deliveryFee: "30.00",
+  tax: "0.00",
+  total: "469.00",
+};
+
+export const MOCK_ADMIN_ORDER: AdminOrderDetail = {
+  id: "order-id-1",
+  orderNumber: MOCK_ORDER_NUMBER,
+  customer: { name: "Anjali", phone: "9876543210" },
+  orderType: "DELIVERY",
+  status: "NEW",
+  total: "469.00",
+  createdAt: new Date().toISOString(),
+  address: MOCK_INVOICE.address,
+  notes: "Less spicy",
+  items: MOCK_INVOICE.items,
+  statusHistory: [],
+  subtotal: "439.00",
+  deliveryFee: "30.00",
+  tax: "0.00",
+};

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import type { Category } from "@shared/contracts";
+import type { Category } from "@shared/contract/contract";
 import { cn } from "@/lib/utils";
 
 interface CategoryNavProps {
@@ -15,6 +15,7 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({
   activeCategoryId,
   onSelectCategory,
 }) => {
+  const sorted = [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
   return (
     <nav className="w-full lg:w-64 flex-shrink-0">
       {/* Mobile & Tablet: Horizontal Scrollable Chips */}
@@ -30,7 +31,7 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({
         >
           All Items
         </button>
-        {categories.map((cat) => (
+        {sorted.map((cat) => (
           <button
             key={cat.id}
             onClick={() => onSelectCategory(cat.id)}
@@ -62,7 +63,7 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({
         >
           All Items
         </button>
-        {categories.map((cat) => (
+        {sorted.map((cat) => (
           <button
             key={cat.id}
             onClick={() => onSelectCategory(cat.id)}

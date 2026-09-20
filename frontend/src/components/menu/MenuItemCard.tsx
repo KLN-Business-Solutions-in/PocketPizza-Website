@@ -2,12 +2,13 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
-import type { Product } from "@shared/contracts";
+import type { MenuItem } from "@shared/contract/contract";
 import { VegNonVegBadge } from "@/components/ui/Badge";
+import { formatINR } from "@/lib/money";
 
 interface MenuItemCardProps {
-  product: Product;
-  onSelect: (product: Product) => void;
+  product: MenuItem;
+  onSelect: (product: MenuItem) => void;
 }
 
 const PLACEHOLDER_IMAGE = "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&q=80";
@@ -17,11 +18,8 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = ({ product, onSelect })
   // initialising from props safe (no prop-sync effect needed).
   const [imgSrc, setImgSrc] = useState(product.imageUrl || PLACEHOLDER_IMAGE);
 
-  // Convert cents to currency format (e.g. 1299 -> ₹12.99 or $12.99)
-  const formattedPrice = (product.basePrice / 100).toLocaleString("en-US", {
-    style: "currency",
-    currency: "USD",
-  });
+  // Backend wire format is decimal strings in INR (§10.7, §18). Never cents/USD.
+  const formattedPrice = formatINR(product.basePrice);
 
   return (
     <div className="flex flex-col justify-between rounded-lg border border-border-default bg-white overflow-hidden shadow-card hover:shadow-elevated transition-all group">
@@ -38,7 +36,7 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = ({ product, onSelect })
             priority={false}
           />
           <div className="absolute top-2.5 left-2.5 z-10">
-            <VegNonVegBadge type={product.dietaryType} />
+            <VegNonVegBadge isVeg={product.isVeg} />
           </div>
         </div>
 
@@ -66,7 +64,7 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = ({ product, onSelect })
           onClick={() => onSelect(product)}
           className="rounded-full bg-blushTint px-4 py-2 font-heading text-xs font-semibold text-brand-red transition-colors hover:bg-brand-red hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
         >
-          {product.variants.length > 0 ? "Customise" : "Add to Cart"}
+          {product.variants.length > 0 || product.addOns.length > 0 ? "Customise" : "Add to Cart"}
         </button>
       </div>
     </div>

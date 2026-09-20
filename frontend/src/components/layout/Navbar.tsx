@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useCartStore } from "@/lib/cart/store";
 
 const links = [
   { href: "/", label: "Home" },
@@ -34,8 +35,7 @@ function BagIcon({ className }: { className?: string }) {
 export default function Navbar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  // TODO: read from cart store once implemented
-  const cartCount = 0;
+  const cartCount = useCartStore((s) => s.lines.reduce((n, l) => n + l.quantity, 0));
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
