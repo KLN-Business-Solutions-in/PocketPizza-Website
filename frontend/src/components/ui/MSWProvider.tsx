@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+let mswStart: Promise<void> | null = null;
+
 export function MSWProvider({ children }: { children: React.ReactNode }) {
   const [mswReady, setMswReady] = useState(false);
 
@@ -10,12 +12,13 @@ export function MSWProvider({ children }: { children: React.ReactNode }) {
       if (process.env.NEXT_PUBLIC_USE_MOCKS === "true" && typeof window !== "undefined") {
         try {
           const { worker } = await import("../../mocks/browser");
-          await worker.start({
+          mswStart ??= worker.start({
             onUnhandledRequest: "bypass",
             serviceWorker: {
               url: "/mockServiceWorker.js",
             },
           });
+          await mswStart;
           console.log("[MSW] Mocking enabled.");
           if (!navigator.serviceWorker.controller) {
             console.warn("[MSW] Service worker registered but not controlling this page yet. Refresh once (F5) to activate interception.");
