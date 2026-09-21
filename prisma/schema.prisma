@@ -1,0 +1,213 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum OrderType {
+  DELIVERY
+  PICKUP
+  DINE_IN
+}
+
+enum OrderStatus {
+  NEW
+  CONFIRMED
+  PREPARING
+  READY
+  OUT_FOR_DELIVERY
+  COMPLETED
+  CANCELLED
+}
+
+model Restaurant {
+  id          String  @id @default(cuid())
+  name        String
+  phone       String
+  address     String?
+  deliveryFee Decimal @default(0) @db.Decimal(10, 2)
+
+  categories Category[]
+  products   MenuItem[]
+  customers  Customer[]
+  orders     Order[]
+  admins     AdminUser[]
+}
+
+model AdminUser {
+  id           String     @id @default(cuid())
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String   @default("admin")
+  createdAt    DateTime @default(now())
+}
+
+model Category {
+  id           String     @id @default(cuid())
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+
+  name      String
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+
+  items MenuItem[]
+}
+
+model MenuItem {
+  id           String     @id @default(cuid())
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  name        String
+  description String?
+  basePrice   Decimal @db.Decimal(10, 2)
+  imageUrl    String?
+  isVeg       Boolean @default(true)
+  isActive    Boolean @default(true)
+
+  variants   ItemVariant[]
+  addOns     ItemAddOn[]
+  orderItems OrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([restaurantId, isActive])
+}
+
+model ItemVariant {
+  id         String   @id @default(cuid())
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+
+  label      String
+  priceDelta Decimal @default(0) @db.Decimal(10, 2)
+}
+
+model ItemAddOn {
+  id         String   @id @default(cuid())
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+
+  label    String
+  price    Decimal @db.Decimal(10, 2)
+  isActive Boolean @default(true)
+}
+
+model Customer {
+  id           String     @id @default(cuid())
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+
+  name  String
+  phone String @unique
+
+  addresses Address[]
+  orders    Order[]
+
+  createdAt DateTime @default(now())
+}
+
+model Address {
+  id         String   @id @default(cuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  line1    String
+  line2    String?
+  landmark String?
+  city     String
+  pincode  String
+}
+
+model Order {
+  id          String @id @default(cuid())
+  orderNumber String @unique
+
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id])
+
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  orderType OrderType
+  status    OrderStatus @default(NEW)
+
+  deliveryAddress String?
+  notes           String?
+
+  subtotal    Decimal @db.Decimal(10, 2)
+  deliveryFee Decimal @default(0) @db.Decimal(10, 2)
+  tax         Decimal @default(0) @db.Decimal(10, 2)
+  total       Decimal @db.Decimal(10, 2)
+
+  items         OrderItem[]
+  statusHistory OrderStatusHistory[]
+  notifications Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([restaurantId, createdAt])
+}
+
+model OrderItem {
+  id String @id @default(cuid())
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  menuItemId String
+  menuItem   MenuItem @relation(fields: [menuItemId], references: [id])
+
+  nameSnapshot    String
+  variantSnapshot String?
+  addOnsSnapshot  Json?
+
+  quantity  Int
+  unitPrice Decimal @db.Decimal(10, 2)
+  lineTotal Decimal @db.Decimal(10, 2)
+}
+
+model OrderStatusHistory {
+  id String @id @default(cuid())
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  oldStatus OrderStatus
+  newStatus OrderStatus
+  changedBy String
+
+  changedAt DateTime @default(now())
+}
+
+model Notification {
+  id String @id @default(cuid())
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  channel     String
+  template    String
+  destination String
+  status      String
+
+  providerMessageId String?
+  errorMessage      String?
+
+  createdAt DateTime @default(now())
+}
