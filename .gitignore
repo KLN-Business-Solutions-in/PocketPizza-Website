@@ -83,3 +83,4 @@ opencode.json
 skills-lock.json
 .agents/
 /generated/prisma
+/backend/src/generated/prisma

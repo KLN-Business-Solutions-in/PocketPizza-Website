@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { PrismaClient } from "../generated/prisma/client";
+import { PrismaClient } from "../backend/src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import argon2 from "argon2";
 
@@ -12,8 +12,18 @@ if (!connectionString) {
 const adapter = new PrismaPg({ connectionString });
 const prisma = new PrismaClient({ adapter });
 
+
+if (process.env.NODE_ENV === "production") {
+  throw new Error("Seeding is disabled in production.");
+}
+
+if (process.env.ALLOW_DATABASE_RESET !== "true") {
+  throw new Error(
+    "Database reset blocked. Set ALLOW_DATABASE_RESET=true to run the development seed."
+  );
+}
 async function main() {
-  console.log("🌱 Starting Pokket Pizza database seed...");
+  console.log("ðŸŒ± Starting Pokket Pizza database seed...");
 
   // --------------------------------------------------
   // CLEAN EXISTING DEVELOPMENT DATA
@@ -511,7 +521,7 @@ async function main() {
   // SUMMARY
   // ==================================================
 
-  console.log("✅ Pokket Pizza seed completed successfully!");
+  console.log("âœ… Pokket Pizza seed completed successfully!");
   console.log("---------------------------------------");
   console.log("Restaurant: Pokket Pizza");
   console.log("Categories: 3");
@@ -525,7 +535,7 @@ async function main() {
 
 main()
   .catch((error) => {
-    console.error("❌ Seed failed:");
+    console.error("Seed failed:");
     console.error(error);
     process.exit(1);
   })
