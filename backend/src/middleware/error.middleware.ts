@@ -12,6 +12,17 @@ const PRISMA_ERROR_MAP: Record<string, { status: number; code: string }> = {
   P2003: { status: 409, code: 'FOREIGN_KEY_VIOLATION' },
 };
 
+// Contract schemas resolve root zod@4 while backend uses nested zod@3 —
+// instanceof fails across package copies, so duck-type as well.
+function isZodError(err: unknown): err is ZodError {
+  if (err instanceof ZodError) return true;
+  return (
+    err instanceof Error &&
+    err.name === 'ZodError' &&
+    Array.isArray((err as ZodError).issues)
+  );
+}
+
 export function errorHandler(
   err: Error,
   req: Request,
@@ -19,9 +30,10 @@ export function errorHandler(
   _next: NextFunction,
 ): void {
   const requestId = String(req.id ?? '');
+  res.setHeader('Cache-Control', 'no-store');
 
-  if (err instanceof ZodError) {
-    const details = err.errors.map((e) => `${e.path.join('.')}: ${e.message}`);
+  if (isZodError(err)) {
+    const details = err.issues.map((e) => `${e.path.join('.')}: ${e.message}`);
     sendError(res, 'VALIDATION_ERROR', 'Validation failed', 400, details, requestId);
     return;
   }
