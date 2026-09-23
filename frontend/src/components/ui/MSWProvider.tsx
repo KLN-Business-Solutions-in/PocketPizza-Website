@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-let mswStart: Promise<void> | null = null;
+let mswStart: Promise<unknown> | null = null;
 
 export function MSWProvider({ children }: { children: React.ReactNode }) {
   const [mswReady, setMswReady] = useState(false);
