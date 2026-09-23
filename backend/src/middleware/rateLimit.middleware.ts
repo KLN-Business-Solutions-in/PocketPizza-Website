@@ -1,11 +1,22 @@
+import type { Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
+
+function rateLimitBody(message: string) {
+  return (req: Request, res: Response): void => {
+    res.status(429).json({
+      success: false,
+      error: { code: 'RATE_LIMITED', message },
+      requestId: String(req.id ?? ''),
+    });
+  };
+}
 
 export const globalRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, error: { code: 'RATE_LIMITED', message: 'Too many requests' } },
+  handler: rateLimitBody('Too many requests'),
 });
 
 export const loginRateLimit = rateLimit({
@@ -17,7 +28,7 @@ export const loginRateLimit = rateLimit({
     const email = (req.body?.email as string)?.toLowerCase().trim() ?? 'unknown';
     return `${req.ip}:${email}`;
   },
-  message: { success: false, error: { code: 'RATE_LIMITED', message: 'Too many login attempts' } },
+  handler: rateLimitBody('Too many login attempts'),
 });
 
 export const orderCreateRateLimit = rateLimit({
@@ -25,7 +36,7 @@ export const orderCreateRateLimit = rateLimit({
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, error: { code: 'RATE_LIMITED', message: 'Too many order attempts' } },
+  handler: rateLimitBody('Too many order attempts'),
 });
 
 export const refreshRateLimit = rateLimit({
@@ -33,5 +44,5 @@ export const refreshRateLimit = rateLimit({
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { success: false, error: { code: 'RATE_LIMITED', message: 'Too many refresh attempts' } },
+  handler: rateLimitBody('Too many refresh attempts'),
 });
