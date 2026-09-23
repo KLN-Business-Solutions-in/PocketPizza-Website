@@ -24,7 +24,15 @@ if (process.env.ALLOW_DATABASE_RESET !== "true") {
   );
 }
 async function main() {
-  console.log("ðŸŒ± Starting Pokket Pizza database seed...");
+  console.log("🌱 Starting Pokket Pizza database seed...");
+
+  const adminPassword = process.env.ADMIN_PASSWORD;
+
+  if (!adminPassword) {
+    throw new Error("ADMIN_PASSWORD is not defined");
+  }
+
+  const passwordHash = await argon2.hash(adminPassword);
 
   // --------------------------------------------------
   // CLEAN EXISTING DEVELOPMENT DATA
@@ -63,14 +71,6 @@ async function main() {
   // --------------------------------------------------
   // ADMIN USER
   // --------------------------------------------------
-
-const adminPassword = process.env.ADMIN_PASSWORD;
-
-if (!adminPassword) {
-  throw new Error("ADMIN_PASSWORD is not defined");
-}
-
-const passwordHash = await argon2.hash(adminPassword);
 
   await prisma.adminUser.create({
     data: {
