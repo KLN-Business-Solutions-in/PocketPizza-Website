@@ -11,7 +11,10 @@ import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import { sendSuccess } from './utils/response';
 import { ah } from './utils/async-handler';
 import { getPrisma } from './config/database';
-import { publicRouter } from './routes/public.routes';
+import { menuRouter } from './modules/menu/menu.routes';
+import { authRouter } from './modules/auth/auth.routes';
+import { requireAdmin } from './middleware/auth.middleware';
+import { adminRouter } from './modules/admin/admin.routes';
 
 const app = express();
 
@@ -76,7 +79,9 @@ app.get(
   }),
 );
 
-app.use('/api/v1', publicRouter);
+app.use('/api/v1/auth', authRouter);
+app.use('/api/v1/admin', requireAdmin, adminRouter);
+app.use('/api/v1', menuRouter);
 
 app.use(notFoundHandler);
 
