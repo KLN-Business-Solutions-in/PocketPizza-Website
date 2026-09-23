@@ -64,8 +64,13 @@ async function main() {
   // ADMIN USER
   // --------------------------------------------------
 
-  const adminPassword = "Admin@123";
-  const passwordHash = await argon2.hash(adminPassword);
+const adminPassword = process.env.ADMIN_PASSWORD;
+
+if (!adminPassword) {
+  throw new Error("ADMIN_PASSWORD is not defined");
+}
+
+const passwordHash = await argon2.hash(adminPassword);
 
   await prisma.adminUser.create({
     data: {
@@ -531,7 +536,6 @@ async function main() {
   console.log("---------------------------------------");
   console.log("Admin login:");
   console.log("Email: admin@pokketpizza.com");
-  console.log("Password: Admin@123");
 }
 
 main()

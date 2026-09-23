@@ -28,7 +28,7 @@ The application stores only a cryptographic password hash in:
 
 Passwords must be hashed using the password-hashing algorithm used by the Backend authentication implementation before being stored in PostgreSQL.
 
-During login, the Backend compares the submitted password against the stored password hash. The original plaintext password cannot be recovered from the database.
+During login, the Backend authentication flow should verify the submitted password against the stored password hash. The original plaintext password cannot be recovered from the database.
 
 ## Password Security Rules
 
