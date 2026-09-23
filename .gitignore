@@ -75,7 +75,6 @@ temp/
 # docs/*.pdf
 # docs/*.sketch
 # docs/*.xd
-docs/
 doc/
 AGENTS.md   
 opencode.json
