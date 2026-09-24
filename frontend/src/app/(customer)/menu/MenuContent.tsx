@@ -2,23 +2,24 @@
 
 <<<<<<< HEAD
 import React, { useMemo, useState } from "react";
-import { useMenu } from "@/lib/api/useMenu";
+import { useMenuFlat } from "@/lib/api/useMenu";
 import { CategoryNav } from "@/components/menu/CategoryNav";
 import { MenuItemCard } from "@/components/menu/MenuItemCard";
 import { MenuSkeleton } from "@/components/menu/MenuSkeleton";
+import { ProductModal } from "@/components/menu/ProductModal";
 import { EmptyState, ErrorState } from "@/components/ui/LayoutPrimitives";
+import type { MenuItem } from "@shared/contract/contract";
 
 export function MenuContent() {
-  const { data, isLoading, isError, error, refetch } = useMenu();
+  const { categories, products, isLoading, isError, error, refetch } = useMenuFlat();
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
-
-  const products = data?.products;
+  const [selected, setSelected] = useState<MenuItem | null>(null);
 
   const filteredProducts = useMemo(() => {
-    if (!products) return [];
     if (selectedCategoryId === "all") return products;
-    return products.filter((p) => p.categoryId === selectedCategoryId);
-  }, [products, selectedCategoryId]);
+    const cat = categories.find((c) => c.id === selectedCategoryId);
+    return cat?.items ?? [];
+  }, [products, categories, selectedCategoryId]);
 
   return (
     <div className="space-y-6 pb-12">
@@ -35,9 +36,9 @@ export function MenuContent() {
       {/* Main Layout Grid */}
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         {/* Category Navigation */}
-        {data?.categories && (
+        {categories && (
           <CategoryNav
-            categories={data.categories}
+            categories={categories}
             activeCategoryId={selectedCategoryId}
             onSelectCategory={setSelectedCategoryId}
           />
@@ -51,7 +52,7 @@ export function MenuContent() {
           {/* Error State */}
           {isError && (
             <ErrorState
-              message={error?.message || "Failed to load menu items."}
+              message={(error as Error)?.message || "Failed to load menu items."}
               onRetry={() => refetch()}
             />
           )}
@@ -71,15 +72,15 @@ export function MenuContent() {
                 <MenuItemCard
                   key={product.id}
                   product={product}
-                  onSelect={() => {
-                    // TODO: open ProductModal once implemented
-                  }}
+                  onSelect={(p) => setSelected(p)}
                 />
               ))}
             </div>
           )}
         </div>
       </div>
+
+      <ProductModal product={selected} onClose={() => setSelected(null)} />
     </div>
   );
 }

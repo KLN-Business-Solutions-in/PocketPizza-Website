@@ -1,3 +1,10 @@
+/**
+ * @deprecated STALE — do not import in new code.
+ * Canonical frozen contract per Backend Master Reference §5.14 is
+ * `shared/contract/contract.ts` (decimal-string money, nested categories,
+ * NEW/CONFIRMED/... statuses, publicToken lookup, cookie auth).
+ * This file is kept only for backward compat and will be removed.
+ */
 import { z } from "zod";
 
 // ==========================================
