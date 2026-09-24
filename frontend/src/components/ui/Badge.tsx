@@ -15,7 +15,6 @@ export const VegNonVegBadge: React.FC<{
   const borderColor = veg ? "border-green-600" : "border-brand-red";
   const dotColor = veg ? "bg-green-600" : "bg-brand-red";
   const title = veg ? "Vegetarian" : "Non-Vegetarian";
-
   return (
     <div
       className={cn(
