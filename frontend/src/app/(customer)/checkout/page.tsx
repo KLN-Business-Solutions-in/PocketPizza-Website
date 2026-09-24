@@ -106,7 +106,7 @@ export default function CheckoutPage() {
       const api = err as ApiError;
       if (api?.code === "ORDER_INVALID") {
         const details = Array.isArray(api.details)
-          ? api.details.map((d) => (typeof d === "string" ? d : d.message)).join(" ")
+          ? api.details.map((d: unknown) => (typeof d === "string" ? d : (d as { message?: string })?.message || "")).join(" ")
           : "";
         setFormError(`${api.message} ${details}`.trim());
       } else {

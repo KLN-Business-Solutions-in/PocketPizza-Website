@@ -21,7 +21,18 @@ import {
  */
 
 const API = "*/api/v1";
-const rid = () => crypto.randomUUID();
+
+/** Service Workers don't always expose crypto.randomUUID — use a safe fallback. */
+const rid = (): string => {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
 
 function ok(data: unknown, status = 200) {
   return HttpResponse.json({ success: true, data, requestId: rid() }, { status });
