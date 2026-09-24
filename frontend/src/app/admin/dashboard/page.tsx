@@ -37,7 +37,10 @@ const STATUSES: (OrderStatus | "")[] = [
 ];
 
 function today(): string {
-  return new Date().toISOString().slice(0, 10);
+  // Restaurant business date in Asia/Kolkata (IST)
+  const now = new Date();
+  const ist = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+  return ist.toISOString().slice(0, 10);
 }
 
 export default function AdminDashboardPage() {
@@ -100,8 +103,13 @@ export default function AdminDashboardPage() {
           variant="outline"
           size="sm"
           onClick={async () => {
-            await logout.mutateAsync();
-            router.replace("/admin/login");
+            try {
+              await logout.mutateAsync();
+            } catch {
+              // Logout failed — still redirect after cache invalidation
+            } finally {
+              router.replace("/admin/login");
+            }
           }}
         >
           Logout

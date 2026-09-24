@@ -9,6 +9,10 @@ cp .env.example .env.local
 npm run dev
 ```
 
+This starts both the frontend (http://localhost:3000) and backend (http://localhost:4000) concurrently from the repository root. To run them separately, open two terminals:
+- Terminal 1: `npm run dev:frontend`
+- Terminal 2: `npm run dev:backend`
+
 The app is then available at [http://localhost:3000/menu](http://localhost:3000/menu). To switch back to the local MSW fixtures, set `NEXT_PUBLIC_USE_MOCKS=true` in `.env.local` and restart the dev server.
 
 You can also use `yarn dev`, `pnpm dev`, or `bun dev` if that is your preferred package manager.

@@ -19,9 +19,19 @@ export function CartReconciler() {
     state.lines.map((line) => lineKey(line)).join("|")
   );
   const reconcileAvailability = useCartStore((state) => state.reconcileAvailability);
+  const setHydrated = useCartStore((state) => state.setHydrated);
   const [toast, setToast] = useState<ToastState>(null);
   const notifiedSignature = useRef("");
   const previousPathname = useRef(pathname);
+
+  // Trigger rehydration on mount
+  useEffect(() => {
+    const rehydrate = async () => {
+      await useCartStore.persist.rehydrate();
+      setHydrated(true);
+    };
+    rehydrate();
+  }, [setHydrated]);
 
   useEffect(() => {
     const navigatedToCart = previousPathname.current !== pathname;
@@ -75,4 +85,9 @@ export function CartReconciler() {
   }, [toast]);
 
   return toast ? <Toast message={toast.message} type={toast.type} /> : null;
+}
+
+/** Hook to access cart hydration state for gating UI */
+export function useCartHydrated() {
+  return useCartStore((state) => state.hydrated);
 }
