@@ -4,7 +4,6 @@ import React, { useState } from "react";
 import Image from "next/image";
 import type { Product } from "@shared/contracts";
 import { VegNonVegBadge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 
 interface MenuItemCardProps {
   product: Product;
@@ -60,11 +59,15 @@ export const MenuItemCard: React.FC<MenuItemCardProps> = ({ product, onSelect })
       <div className="p-4 pt-0 flex items-center justify-between mt-2">
         <div>
           <span className="text-tag text-mutedGray block uppercase tracking-wide">Starting at</span>
-          <span className="font-heading font-extrabold text-h4 text-charcoal">{formattedPrice}</span>
+          <span className="font-heading font-extrabold text-h4 text-brand-red">{formattedPrice}</span>
         </div>
-        <Button size="sm" variant="outline" onClick={() => onSelect(product)}>
-          {product.variants.length > 0 ? "Customise" : "Add +"}
-        </Button>
+        <button
+          type="button"
+          onClick={() => onSelect(product)}
+          className="rounded-full bg-blushTint px-4 py-2 font-heading text-xs font-semibold text-brand-red transition-colors hover:bg-brand-red hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
+        >
+          {product.variants.length > 0 ? "Customise" : "Add to Cart"}
+        </button>
       </div>
     </div>
   );
