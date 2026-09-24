@@ -8,12 +8,6 @@ const itemInclude = {
   addOns: { orderBy: { id: 'asc' as const } },
 } as const;
 
-export async function findRestaurantId(): Promise<string | null> {
-  const prisma = await getPrisma();
-  const restaurant = await prisma.restaurant.findFirst({ select: { id: true } });
-  return restaurant?.id ?? null;
-}
-
 export async function findAdminCategories(restaurantId: string) {
   const prisma = await getPrisma();
   return prisma.category.findMany({

@@ -24,8 +24,8 @@ export async function getProductById(req: Request, res: Response): Promise<void>
   sendSuccess(res, await getProduct(id));
 }
 
-export async function listAdminMenu(_req: Request, res: Response): Promise<void> {
-  sendSuccess(res, await getAdminMenu());
+export async function listAdminMenu(req: Request, res: Response): Promise<void> {
+  sendSuccess(res, await getAdminMenu(req.admin!.restaurantId));
 }
 
 export async function createProductController(
@@ -33,7 +33,7 @@ export async function createProductController(
   res: Response,
 ): Promise<void> {
   const body = createProductSchema.parse(req.body);
-  sendSuccess(res, await createProduct(body), 201);
+  sendSuccess(res, await createProduct(body, req.admin!.restaurantId), 201);
 }
 
 export async function updateProductController(
@@ -56,7 +56,10 @@ export async function updateProductController(
       .filter((k) => k in parsed)
       .map((k) => [k, (parsed as Record<string, unknown>)[k]]),
   ) as typeof parsed;
-  sendSuccess(res, await updateProduct(id, body));
+  sendSuccess(
+    res,
+    await updateProduct(id, body, req.admin!.restaurantId),
+  );
 }
 
 export async function toggleProductStatusController(
@@ -64,5 +67,8 @@ export async function toggleProductStatusController(
   res: Response,
 ): Promise<void> {
   const { id } = cuidParamSchema.parse({ id: req.params.id });
-  sendSuccess(res, await toggleProductStatus(id));
+  sendSuccess(
+    res,
+    await toggleProductStatus(id, req.admin!.restaurantId),
+  );
 }

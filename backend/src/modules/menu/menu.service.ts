@@ -18,7 +18,6 @@ import {
   findAdminCategories,
   findCategoryById,
   findMenuItemById,
-  findRestaurantId,
   toggleMenuItemActive,
   updateMenuItemInTransaction,
 } from './menu.repository';
@@ -129,10 +128,9 @@ function serializeAdminMenuItem(item: AdminItemRow): AdminMenuItem {
   };
 }
 
-export async function getAdminMenu(): Promise<AdminMenuResponse> {
-  const restaurantId = await findRestaurantId();
-  if (!restaurantId) return { categories: [] };
-
+export async function getAdminMenu(
+  restaurantId: string,
+): Promise<AdminMenuResponse> {
   const categories = await findAdminCategories(restaurantId);
   return {
     categories: categories.map((category) => ({
@@ -148,10 +146,8 @@ export async function getAdminMenu(): Promise<AdminMenuResponse> {
 
 export async function createProduct(
   input: CreateProductRequest,
+  restaurantId: string,
 ): Promise<AdminMenuItem> {
-  const restaurantId = await findRestaurantId();
-  if (!restaurantId) throw new NotFoundError('Category');
-
   const category = await findCategoryById(input.categoryId, restaurantId);
   if (!category) throw new NotFoundError('Category');
 
@@ -162,13 +158,11 @@ export async function createProduct(
 export async function updateProduct(
   id: string,
   input: UpdateProductRequest,
+  restaurantId: string,
 ): Promise<AdminMenuItem> {
   if (Object.keys(input).length === 0) {
     throw new ValidationError('Update body must include at least one field');
   }
-
-  const restaurantId = await findRestaurantId();
-  if (!restaurantId) throw new NotFoundError('Product');
 
   const existing = await findMenuItemById(id, restaurantId);
   if (!existing) throw new NotFoundError('Product');
@@ -184,10 +178,8 @@ export async function updateProduct(
 
 export async function toggleProductStatus(
   id: string,
+  restaurantId: string,
 ): Promise<ToggleStatusResponse> {
-  const restaurantId = await findRestaurantId();
-  if (!restaurantId) throw new NotFoundError('Product');
-
   const current = await findMenuItemById(id, restaurantId);
   if (!current) throw new NotFoundError('Product');
 
