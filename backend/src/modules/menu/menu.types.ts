@@ -20,3 +20,8 @@ export type CategoryRow = {
   sortOrder: number;
   items: ItemRow[];
 };
+
+export type AdminItemRow = ItemRow & {
+  isActive: boolean;
+  categoryId: string;
+};
