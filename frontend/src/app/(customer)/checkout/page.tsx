@@ -35,12 +35,17 @@ export default function CheckoutPage() {
   const createOrder = useCreateOrder();
   // One idempotency key per checkout attempt (§19). Regenerated after success.
   const idempotencyRef = React.useRef<string>(newIdempotencyKey());
+  const cartSignature = lines
+    .map((line) => `${line.menuItemId}|${line.variantId ?? ""}|${line.addOnIds.join(",")}:${line.quantity}`)
+    .join(";");
 
   React.useEffect(() => {
-    if (lines.length === 0 || quote.isPending || quote.isSuccess) return;
+    if (lines.length === 0) return;
+    quote.reset();
     quote.mutate(quotePayload(orderType, lines));
+    // Re-run when any line's options or quantity changes, not just line count.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lines.length, orderType]);
+  }, [cartSignature, orderType]);
 
   const refreshQuote = () => {
     setFormError(null);
@@ -72,6 +77,8 @@ export default function CheckoutPage() {
       return;
     }
 
+    // Display snapshots stay client-side; the server receives IDs/options only
+    // and recomputes the authoritative price.
     const body: CreateOrderRequest = {
       orderType,
       items: lines.map((l) => ({
@@ -105,9 +112,7 @@ export default function CheckoutPage() {
     } catch (err) {
       const api = err as ApiError;
       if (api?.code === "ORDER_INVALID") {
-        const details = Array.isArray(api.details)
-          ? api.details.map((d) => (typeof d === "string" ? d : d.message)).join(" ")
-          : "";
+        const details = Array.isArray(api.details) ? api.details.join(" ") : "";
         setFormError(`${api.message} ${details}`.trim());
       } else {
         setFormError(api?.message || "Failed to place order. Please try again.");

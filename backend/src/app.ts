@@ -9,6 +9,7 @@ import { logger } from './utils/logger';
 import { globalRateLimit } from './middleware/rateLimit.middleware';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 import { sendSuccess } from './utils/response';
+import { publicRouter } from './routes/public.routes';
 
 const app = express();
 
@@ -41,6 +42,11 @@ app.use(
 );
 
 app.use(globalRateLimit);
+
+if (env.NODE_ENV !== 'production') {
+  // Local seeded fallback; production must use the Prisma-backed router.
+  app.use('/api/v1', publicRouter);
+}
 
 app.get('/health', (_req, res) => {
   sendSuccess(res, { status: 'ok' });

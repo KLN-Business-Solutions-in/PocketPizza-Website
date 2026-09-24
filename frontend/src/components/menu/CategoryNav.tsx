@@ -15,68 +15,81 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({
   activeCategoryId,
   onSelectCategory,
 }) => {
-  const sorted = [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
+  const sorted = [...categories].sort(
+    (a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name)
+  );
+
+  const chipClassName = (isActive: boolean) =>
+    cn(
+      "whitespace-nowrap rounded-2xl border px-4 py-2 font-heading text-label font-semibold transition-all",
+      isActive
+        ? "border-brand-red bg-brand-red text-white shadow-card"
+        : "border-border-default bg-white text-charcoal hover:bg-neutralTint"
+    );
+
+  const sidebarClassName = (isActive: boolean) =>
+    cn(
+      "flex w-full items-center justify-between rounded-md px-3.5 py-2.5 text-left font-heading text-button font-semibold transition-all",
+      isActive
+        ? "border-l-4 border-brand-red bg-blushTint font-bold text-brand-red"
+        : "text-charcoal hover:bg-neutralTint"
+    );
+
   return (
-    <nav className="w-full lg:w-64 flex-shrink-0">
-      {/* Mobile & Tablet: Horizontal Scrollable Chips */}
-      <div className="flex lg:hidden overflow-x-auto gap-2 pb-2 scrollbar-none no-scrollbar -mx-4 px-4 sticky top-16 bg-cream-bg/95 backdrop-blur z-30 pt-2 border-b border-border-default">
+    <nav className="w-full flex-shrink-0 lg:w-64" aria-label="Menu categories">
+      <div className="no-scrollbar sticky top-16 -mx-4 flex gap-2 overflow-x-auto border-b border-border-default bg-cream-bg/95 px-4 pb-2 pt-2 backdrop-blur lg:hidden">
         <button
+          type="button"
           onClick={() => onSelectCategory("all")}
-          className={cn(
-            "whitespace-nowrap px-4 py-2 rounded-2xl text-label font-heading font-semibold transition-all border",
-            activeCategoryId === "all"
-              ? "bg-brand-red text-white border-brand-red shadow-card"
-              : "bg-white text-charcoal border-border-default hover:bg-neutralTint"
-          )}
+          className={chipClassName(activeCategoryId === "all")}
+          aria-current={activeCategoryId === "all" ? "page" : undefined}
         >
           All Items
         </button>
-        {sorted.map((cat) => (
-          <button
-            key={cat.id}
-            onClick={() => onSelectCategory(cat.id)}
-            className={cn(
-              "whitespace-nowrap px-4 py-2 rounded-2xl text-label font-heading font-semibold transition-all border",
-              activeCategoryId === cat.id
-                ? "bg-brand-red text-white border-brand-red shadow-card"
-                : "bg-white text-charcoal border-border-default hover:bg-neutralTint"
-            )}
-          >
-            {cat.name}
-          </button>
-        ))}
+        {sorted.map((category) => {
+          const isActive = activeCategoryId === category.id;
+          return (
+            <button
+              key={category.id}
+              type="button"
+              onClick={() => onSelectCategory(category.id)}
+              className={chipClassName(isActive)}
+              aria-current={isActive ? "page" : undefined}
+              aria-label={`Browse ${category.name} category`}
+            >
+              {category.name}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Desktop: Fixed/Sticky Vertical Sidebar */}
-      <div className="hidden lg:flex flex-col gap-1 sticky top-20 bg-white p-3 rounded-xl border border-border-default shadow-card">
-        <h2 className="px-3 py-2 text-caption font-bold text-mutedGray uppercase tracking-wider">
+      <div className="sticky top-20 hidden flex-col gap-1 rounded-xl border border-border-default bg-white p-3 shadow-card lg:flex">
+        <h2 className="px-3 py-2 text-caption font-bold uppercase tracking-wider text-mutedGray">
           Categories
         </h2>
         <button
+          type="button"
           onClick={() => onSelectCategory("all")}
-          className={cn(
-            "w-full text-left px-3.5 py-2.5 rounded-md text-button font-heading font-semibold transition-all flex items-center justify-between",
-            activeCategoryId === "all"
-              ? "bg-blushTint text-brand-red border-l-4 border-brand-red font-bold"
-              : "text-charcoal hover:bg-neutralTint"
-          )}
+          className={sidebarClassName(activeCategoryId === "all")}
+          aria-current={activeCategoryId === "all" ? "page" : undefined}
         >
           All Items
         </button>
-        {sorted.map((cat) => (
-          <button
-            key={cat.id}
-            onClick={() => onSelectCategory(cat.id)}
-            className={cn(
-              "w-full text-left px-3.5 py-2.5 rounded-md text-button font-heading font-semibold transition-all flex items-center justify-between",
-              activeCategoryId === cat.id
-                ? "bg-blushTint text-brand-red border-l-4 border-brand-red font-bold"
-                : "text-charcoal hover:bg-neutralTint"
-            )}
-          >
-            {cat.name}
-          </button>
-        ))}
+        {sorted.map((category) => {
+          const isActive = activeCategoryId === category.id;
+          return (
+            <button
+              key={category.id}
+              type="button"
+              onClick={() => onSelectCategory(category.id)}
+              className={sidebarClassName(isActive)}
+              aria-current={isActive ? "page" : undefined}
+              aria-label={`Browse ${category.name} category`}
+            >
+              {category.name}
+            </button>
+          );
+        })}
       </div>
     </nav>
   );

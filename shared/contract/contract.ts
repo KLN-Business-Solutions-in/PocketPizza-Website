@@ -79,6 +79,79 @@ export type MenuResponse = {
 
 export type ProductDetailResponse = MenuItem;
 
+// Runtime schemas for the public menu endpoints. The TypeScript types above
+// remain the source of truth; these schemas make contract drift visible at the
+// API boundary instead of allowing malformed data to reach UI components.
+const decimalStringSchema = z.string().regex(/^\d+(\.\d{1,2})?$/);
+
+export const ErrorEnvelopeSchema = z
+  .object({
+    success: z.literal(false),
+    error: z
+      .object({
+        code: z.string(),
+        message: z.string(),
+        details: z.array(z.string()).optional(),
+      })
+      .strict(),
+    requestId: z.string().min(1),
+  })
+  .strict();
+
+export const SuccessEnvelopeSchema = z
+  .object({
+    success: z.literal(true),
+    data: z.unknown(),
+    requestId: z.string().min(1),
+  })
+  .strict();
+
+export const MenuItemAddonSchema = z
+  .object({
+    id: z.string().min(1),
+    label: z.string(),
+    price: decimalStringSchema,
+  })
+  .strict();
+
+export const MenuItemVariantSchema = z
+  .object({
+    id: z.string().min(1),
+    label: z.string(),
+    priceDelta: decimalStringSchema,
+  })
+  .strict();
+
+export const MenuItemSchema = z
+  .object({
+    id: z.string().min(1),
+    name: z.string().min(1),
+    description: z.string().nullable(),
+    basePrice: decimalStringSchema,
+    imageUrl: z.string().url().nullable(),
+    isVeg: z.boolean(),
+    variants: z.array(MenuItemVariantSchema),
+    addOns: z.array(MenuItemAddonSchema),
+  })
+  .strict();
+
+export const CategorySchema = z
+  .object({
+    id: z.string().min(1),
+    name: z.string().min(1),
+    sortOrder: z.number().int(),
+    items: z.array(MenuItemSchema),
+  })
+  .strict();
+
+export const MenuResponseSchema = z
+  .object({
+    categories: z.array(CategorySchema),
+  })
+  .strict();
+
+export const ProductDetailResponseSchema = MenuItemSchema;
+
 // 4. ORDERS — Quote
 export const quoteItemSchema = z.object({
   menuItemId: z.string().min(1),

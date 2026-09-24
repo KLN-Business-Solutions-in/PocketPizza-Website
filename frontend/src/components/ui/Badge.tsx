@@ -18,10 +18,12 @@ export const VegNonVegBadge: React.FC<{
   return (
     <div
       className={cn(
-        "inline-flex items-center justify-center w-4 h-4 p-0.5 border bg-white rounded-xs",
+        "inline-flex h-4 w-4 items-center justify-center rounded-xs border bg-white p-0.5",
         borderColor,
         className
       )}
+      role="img"
+      aria-label={title}
       title={title}
     >
       <div className={cn("w-2 h-2 rounded-full", dotColor)} />

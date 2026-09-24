@@ -24,13 +24,18 @@ const API = "*/api/v1";
 const rid = () => crypto.randomUUID();
 
 function ok(data: unknown, status = 200) {
-  return HttpResponse.json({ success: true, data, requestId: rid() }, { status });
+  const requestId = rid();
+  return HttpResponse.json(
+    { success: true, data, requestId },
+    { status, headers: { "X-Request-Id": requestId } }
+  );
 }
 
-function fail(code: string, message: string, status: number, details: unknown[] = []) {
+function fail(code: string, message: string, status: number, details: string[] = []) {
+  const requestId = rid();
   return HttpResponse.json(
-    { success: false, error: { code, message, details }, requestId: rid() },
-    { status }
+    { success: false, error: { code, message, details }, requestId },
+    { status, headers: { "X-Request-Id": requestId } }
   );
 }
 
@@ -102,7 +107,7 @@ export const handlers = [
         "ORDER_INVALID",
         "One or more cart items are no longer available.",
         400,
-        [{ field: `items[${err?.idx ?? 0}]`, message: "Invalid item/variant/add-on." }]
+        [`items[${err?.idx ?? 0}]: Invalid item/variant/add-on.`]
       );
     }
   }),
@@ -186,9 +191,9 @@ export const handlers = [
   http.get(`${API}/admin/reports/summary`, () =>
     ok({
       orderCount: { total: 10, completed: 8, cancelled: 1 },
-      salesTotal: "4500.00",
-      averageOrderValue: "562.50",
-      topItems: [{ name: "Classic Margherita", quantity: 12, totalRevenue: "3588.00" }],
+      salesTotal: "3990.00",
+      averageOrderValue: "399.00",
+      topItems: [{ name: "Farmhouse Pizza", quantity: 12, totalRevenue: "2988.00" }],
     })
   ),
 
