@@ -34,6 +34,8 @@ export function quotePayload(
   orderType: OrderType,
   lines: { menuItemId: string; variantId?: string; addOnIds: string[]; quantity: number }[]
 ): QuoteRequest {
+  // Deliberately map only server-owned inputs; displayName/displayPrice are
+  // never part of the request and never become authoritative totals.
   return {
     orderType,
     items: lines.map((l) => ({

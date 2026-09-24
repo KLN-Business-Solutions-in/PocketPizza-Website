@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+  <title id="title">Pokket Pizza</title>
+  <desc id="desc">A pizza illustration used when a menu image is unavailable.</desc>
+  <rect width="1200" height="800" fill="#fff5e6" />
+  <circle cx="600" cy="400" r="270" fill="#fdf0ee" />
+  <path d="M600 165c130 0 235 105 235 235 0 81-40 152-102 193-24-42-67-70-116-70-28 0-54 8-75 22-31-39-50-89-50-145 0-130 44-235 108-235Z" fill="#f2b544" />
+  <path d="M600 165c130 0 235 105 235 235 0 81-40 152-102 193-24-42-67-70-116-70-28 0-54 8-75 22-31-39-50-89-50-145 0-130 44-235 108-235Z" fill="none" stroke="#d62828" stroke-width="18" />
+  <circle cx="515" cy="280" r="25" fill="#d62828" />
+  <circle cx="640" cy="245" r="22" fill="#d62828" />
+  <circle cx="725" cy="335" r="25" fill="#d62828" />
+  <circle cx="500" cy="405" r="22" fill="#d62828" />
+  <path d="M430 520c55-45 120-58 185-35 42 15 74 38 98 68" fill="none" stroke="#5f9b54" stroke-linecap="round" stroke-width="22" />
+  <path d="M470 585c-15-45-6-86 24-119M540 592c-4-55 15-99 56-129M624 608c15-50 46-84 91-101" fill="none" stroke="#5f9b54" stroke-linecap="round" stroke-width="20" />
+</svg>
