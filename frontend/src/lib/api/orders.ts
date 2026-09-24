@@ -61,7 +61,7 @@ export function useCreateOrder() {
 export function useOrder(publicToken: string | undefined) {
   return useQuery<OrderStatusResponse>({
     queryKey: ["order", publicToken],
-    queryFn: () => apiFetch<OrderStatusResponse>(`/orders/${publicToken}`),
+    queryFn: () => apiFetch<OrderStatusResponse>(`/orders/${encodeURIComponent(publicToken ?? "")}`),
     enabled: !!publicToken,
     retry: false,
   });
@@ -71,7 +71,7 @@ export function useInvoice(publicToken: string | undefined) {
   return useQuery<InvoiceResponse>({
     queryKey: ["invoice", publicToken],
     queryFn: () =>
-      apiFetch<InvoiceResponse>(`/orders/${publicToken}/invoice`),
+      apiFetch<InvoiceResponse>(`/orders/${encodeURIComponent(publicToken ?? "")}/invoice`),
     enabled: !!publicToken,
     retry: false,
   });

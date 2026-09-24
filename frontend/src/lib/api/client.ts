@@ -203,7 +203,7 @@ export async function apiFetch<T>(
     console.error(`[api] ${method} ${path} could not reach the server; requestId=unavailable`, error);
     throw new ApiError({
       code: "NETWORK_ERROR",
-      message: "Unable to reach the menu service. Please try again.",
+      message: "Unable to reach the server. Please try again.",
       status: 0,
     });
   }

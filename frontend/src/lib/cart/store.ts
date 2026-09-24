@@ -38,6 +38,7 @@ export type OrderTypeState = OrderType;
 type CartState = {
   lines: CartLine[];
   orderType: OrderTypeState;
+  hydrated: boolean;
   addLine: (line: CartLine) => void;
   updateQty: (key: string, quantity: number) => void;
   removeLine: (key: string) => void;
@@ -46,6 +47,7 @@ type CartState = {
   clear: () => void;
   setOrderType: (t: OrderTypeState) => void;
   count: () => number;
+  setHydrated: (v: boolean) => void;
 };
 
 export function lineKey(line: CartLineIdentity): string {
@@ -95,6 +97,7 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       lines: [],
       orderType: "DELIVERY",
+      hydrated: false,
       addLine: (line) => {
         const normalized = normalizeLine(line);
         if (!normalized) return;
@@ -168,10 +171,12 @@ export const useCartStore = create<CartState>()(
       clear: () => set({ lines: [] }),
       setOrderType: (orderType) => set({ orderType }),
       count: () => get().lines.reduce((total, line) => total + line.quantity, 0),
+      setHydrated: (v) => set({ hydrated: v }),
     }),
     {
       name: "pokket-cart",
       version: 2,
+      skipHydration: true,
       partialize: (state) => ({ lines: state.lines, orderType: state.orderType }),
       migrate: (persistedState) => {
         const candidate = (persistedState ?? {}) as PersistedCartState;
