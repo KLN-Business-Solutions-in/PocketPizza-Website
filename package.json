@@ -27,5 +27,8 @@
     "workerDirectory": [
       "public"
     ]
+  },
+  "allowScripts": {
+    "argon2@0.31.2": true
   }
 }
