@@ -2,17 +2,16 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+Copy `.env.example` to `.env.local` and run the customer UI against the local backend menu API:
 
 ```bash
+cp .env.example .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
+
+The app is then available at [http://localhost:3000/menu](http://localhost:3000/menu). To switch back to the local MSW fixtures, set `NEXT_PUBLIC_USE_MOCKS=true` in `.env.local` and restart the dev server.
+
+You can also use `yarn dev`, `pnpm dev`, or `bun dev` if that is your preferred package manager.
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 

@@ -9,10 +9,10 @@ import type { MenuItem } from "@shared/contract/contract";
 import React from "react";
 
 export function Bestsellers() {
-  const { products, isLoading, isError, refetch } = useMenuFlat();
+  const { products, isLoading, isPending, isError, refetch } = useMenuFlat();
   const [selected, setSelected] = React.useState<MenuItem | null>(null);
 
-  if (isLoading) return <MenuSkeleton />;
+  if (isLoading || isPending) return <MenuSkeleton />;
 
   if (isError) {
     return <ErrorState message="Failed to load bestsellers." onRetry={() => refetch()} />;
@@ -25,7 +25,7 @@ export function Bestsellers() {
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 md:gap-6">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 lg:gap-6">
         {bestsellers.map((product) => (
           <MenuItemCard
             key={product.id}
@@ -34,7 +34,11 @@ export function Bestsellers() {
           />
         ))}
       </div>
-      <ProductModal product={selected} onClose={() => setSelected(null)} />
+      <ProductModal
+        product={selected}
+        canAdd={selected ? products.some((product) => product.id === selected.id) : false}
+        onClose={() => setSelected(null)}
+      />
     </>
   );
 }

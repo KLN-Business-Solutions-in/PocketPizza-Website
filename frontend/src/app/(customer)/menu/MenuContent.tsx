@@ -7,36 +7,50 @@ import { CategoryNav } from "@/components/menu/CategoryNav";
 import { MenuItemCard } from "@/components/menu/MenuItemCard";
 import { MenuSkeleton } from "@/components/menu/MenuSkeleton";
 import { ProductModal } from "@/components/menu/ProductModal";
+import { Button } from "@/components/ui/Button";
 import { EmptyState, ErrorState } from "@/components/ui/LayoutPrimitives";
 import type { MenuItem } from "@shared/contract/contract";
 
 export function MenuContent() {
-  const { categories, products, isLoading, isError, error, refetch } = useMenuFlat();
+  const { categories, products, isLoading, isPending, isError, error, refetch } = useMenuFlat();
+  const isMenuLoading = isLoading || isPending;
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
   const [selected, setSelected] = useState<MenuItem | null>(null);
 
+  const selectedCategory = useMemo(
+    () => categories.find((category) => category.id === selectedCategoryId),
+    [categories, selectedCategoryId]
+  );
+
   const filteredProducts = useMemo(() => {
     if (selectedCategoryId === "all") return products;
-    const cat = categories.find((c) => c.id === selectedCategoryId);
-    return cat?.items ?? [];
-  }, [products, categories, selectedCategoryId]);
+    return selectedCategory?.items ?? [];
+  }, [products, selectedCategory, selectedCategoryId]);
+
+  const emptyTitle = useMemo(() => {
+    if (selectedCategoryId === "all") return "No menu items available";
+    if (selectedCategory) return `No items in ${selectedCategory.name} yet`;
+    return "This category is no longer available";
+  }, [selectedCategory, selectedCategoryId]);
+
+  const emptyDescription =
+    selectedCategoryId === "all"
+      ? "We are adding fresh favourites to the menu. Please check back soon."
+      : "There are no active items in this category right now. Try another category instead.";
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Intro banner */}
       <section className="rounded-2xl bg-white p-5 shadow-card ring-1 ring-border-default md:p-6">
-        <h1 className="font-heading font-extrabold text-h2 md:text-h1 text-charcoal">
-          Freshly Baked Pizzas & Sides
+        <h1 className="font-heading font-extrabold text-h2 text-charcoal md:text-h1">
+          Freshly Baked Pizzas &amp; Sides
         </h1>
         <p className="mt-1 text-body text-bodySecondary">
           Handcrafted dough, rich San Marzano tomato sauce, and hot ingredients delivered fast.
         </p>
       </section>
 
-      {/* Main Layout Grid */}
-      <div className="flex flex-col lg:flex-row gap-6 items-start">
-        {/* Category Navigation */}
-        {categories && (
+      <div className="flex flex-col items-start gap-6 lg:flex-row">
+        {categories.length > 0 && (
           <CategoryNav
             categories={categories}
             activeCategoryId={selectedCategoryId}
@@ -44,43 +58,67 @@ export function MenuContent() {
           />
         )}
 
-        {/* Content Area */}
-        <div className="flex-1 w-full">
-          {/* Loading State */}
-          {isLoading && <MenuSkeleton />}
+        <div className="w-full flex-1">
+          {isMenuLoading && <MenuSkeleton />}
 
-          {/* Error State */}
           {isError && (
             <ErrorState
               message={(error as Error)?.message || "Failed to load menu items."}
-              onRetry={() => refetch()}
+              onRetry={() => void refetch()}
             />
           )}
 
-          {/* Empty Category State */}
-          {!isLoading && !isError && filteredProducts.length === 0 && (
+          {!isMenuLoading && !isError && filteredProducts.length === 0 && (
             <EmptyState
-              title="No items found in this category"
-              description="Try selecting another category or check back later for new additions."
+              title={emptyTitle}
+              description={emptyDescription}
+              action={
+                selectedCategoryId !== "all" ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedCategoryId("all")}
+                  >
+                    Browse all items
+                  </Button>
+                ) : undefined
+              }
             />
           )}
 
-          {/* Responsive Item Grid: 1 col mobile, 2 cols sm, 3 cols lg */}
-          {!isLoading && !isError && filteredProducts.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filteredProducts.map((product) => (
-                <MenuItemCard
-                  key={product.id}
-                  product={product}
-                  onSelect={(p) => setSelected(p)}
-                />
-              ))}
-            </div>
+          {!isMenuLoading && !isError && filteredProducts.length > 0 && (
+            <>
+              {selectedCategory && (
+                <div className="mb-4 flex items-baseline justify-between gap-3">
+                  <h2 className="font-heading text-h3 font-bold text-charcoal">
+                    {selectedCategory.name}
+                  </h2>
+                  <span className="text-caption text-mutedGray">
+                    {filteredProducts.length} {filteredProducts.length === 1 ? "item" : "items"}
+                  </span>
+                </div>
+              )}
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+                {filteredProducts.map((product) => (
+                  <MenuItemCard
+                    key={product.id}
+                    product={product}
+                    onSelect={(item) => setSelected(item)}
+                  />
+                ))}
+              </div>
+            </>
           )}
         </div>
       </div>
 
-      <ProductModal product={selected} onClose={() => setSelected(null)} />
+      <ProductModal
+        key={selected?.id ?? "closed"}
+        product={selected}
+        canAdd={selected ? products.some((product) => product.id === selected.id) : false}
+        onClose={() => setSelected(null)}
+      />
     </div>
   );
 }
