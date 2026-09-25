@@ -71,6 +71,14 @@ npm run build
 
 The frontend and backend are built in sequence. See [`backend/README.md`](backend/README.md) and [`frontend/README.md`](frontend/README.md) for component-specific setup notes.
 
+### Day 5 cart and checkout validation
+
+- The cart spells out the selected variant and add-ons, supports quantity changes, and shows an indicative subtotal before checkout.
+- Checkout uses React Hook Form with `zodResolver` and the shared `createOrderRequestSchema`; the same contract is available to API consumers.
+- Pickup, Delivery, and Dine-in are supported. Name and a 10-digit Indian mobile number are always required.
+- The address block (line 1, line 2, landmark, city, and pincode) is rendered and validated only for Delivery. Phone and pincode inputs use numeric mobile keyboards.
+- Field-level Zod errors are shown inline, and the submit button remains disabled until the active form is valid.
+
 ---
 
 ## 🛒 Order Flow
@@ -82,10 +90,10 @@ Browse Menu → Add to Cart → Review Cart → Checkout Form → WhatsApp Order
 1. Customer browses Menu, taps **Add to Cart** on items
 2. Cart icon shows item count + running total
 3. Customer proceeds to **Checkout** (no login required)
-4. Selects **Home Delivery** (free under 1.5 km) or **In-store Pickup**
-5. Fills name, phone, address/note
+4. Selects **Delivery**, **Pickup**, or **Dine-in**
+5. Fills name, 10-digit mobile, and (for Delivery) the address; notes are optional
 6. On submit → order sent to shop via **WhatsApp message**
-7. Payment collected **cash/UPI on delivery or pickup**
+7. Payment collected **cash/UPI on delivery, pickup, or dine-in**
 
 ---
 

@@ -193,24 +193,57 @@ export type QuoteResponse = {
 
 // 5. ORDERS — Create
 export const addressSchema = z.object({
-  line1: z.string().min(1).max(255),
-  line2: z.string().max(255).optional(),
-  landmark: z.string().max(255).optional(),
-  city: z.string().min(1).max(100),
-  pincode: z.string().min(1).max(10),
+  line1: z.string().trim().min(1, "Address line 1 is required.").max(255),
+  line2: z.string().trim().max(255).optional(),
+  landmark: z.string().trim().max(255).optional(),
+  city: z.string().trim().min(1, "City is required for delivery.").max(100),
+  pincode: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, "Enter a valid 6-digit pincode."),
 });
 
-export const createOrderRequestSchema = z.object({
-  orderType: OrderType,
-  items: z.array(quoteItemSchema).min(1),
-  customer: z.object({
-    name: z.string().min(1).max(255),
-    phone: z.string().min(10).max(15),
-  }),
-  address: addressSchema.optional(),
-  notes: z.string().max(500).optional(),
-  idempotencyKey: z.string().uuid().optional(),
-});
+export const createOrderRequestSchema = z
+  .object({
+    orderType: OrderType,
+    items: z.array(quoteItemSchema).min(1),
+    customer: z.object({
+      name: z.string().trim().min(1, "Name is required.").max(255),
+      phone: z
+        .string()
+        .trim()
+        .regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit Indian mobile number."),
+    }),
+    address: addressSchema.optional(),
+    notes: z.string().trim().max(500).optional(),
+    idempotencyKey: z.string().uuid().optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.orderType !== "DELIVERY") return;
+
+    if (!value.address) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["address"],
+        message: "Delivery address is required.",
+      });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["address", "line1"],
+        message: "Address line 1 is required for delivery.",
+      });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["address", "city"],
+        message: "City is required for delivery.",
+      });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["address", "pincode"],
+        message: "Pincode is required for delivery.",
+      });
+    }
+  });
 
 export type CreateOrderRequest = z.infer<typeof createOrderRequestSchema>;
 

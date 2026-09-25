@@ -17,6 +17,9 @@ export type CartLine = {
   addOnIds: string[];
   quantity: number;
   displayName: string;
+  /** Snapshot labels keep the cart readable while live menu data is loading. */
+  variantLabel?: string;
+  addOnLabels?: string[];
   /** Indicative unit price as a decimal string; never sent to the server. */
   displayPrice: string;
 };
@@ -73,6 +76,13 @@ function normalizeLine(value: unknown): CartLine | null {
     typeof candidate.variantId === "string" && candidate.variantId.trim()
       ? candidate.variantId
       : undefined;
+  const variantLabel =
+    typeof candidate.variantLabel === "string" && candidate.variantLabel.trim()
+      ? candidate.variantLabel
+      : undefined;
+  const addOnLabels = Array.isArray(candidate.addOnLabels)
+    ? candidate.addOnLabels.filter((label): label is string => typeof label === "string" && Boolean(label.trim()))
+    : undefined;
 
   return {
     menuItemId: candidate.menuItemId,
@@ -83,6 +93,8 @@ function normalizeLine(value: unknown): CartLine | null {
       typeof candidate.displayName === "string" && candidate.displayName.trim()
         ? candidate.displayName
         : candidate.menuItemId,
+    ...(variantLabel ? { variantLabel } : {}),
+    ...(addOnLabels && addOnLabels.length > 0 ? { addOnLabels } : {}),
     displayPrice: isDecimalString(candidate.displayPrice) ? candidate.displayPrice : "0.00",
   };
 }
@@ -112,6 +124,8 @@ export const useCartStore = create<CartState>()(
                     ...current,
                     quantity: clampQuantity(current.quantity + normalized.quantity),
                     displayName: normalized.displayName,
+                    variantLabel: normalized.variantLabel ?? current.variantLabel,
+                    addOnLabels: normalized.addOnLabels ?? current.addOnLabels,
                     displayPrice: normalized.displayPrice,
                   }
                 : current
@@ -175,7 +189,7 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: "pokket-cart",
-      version: 2,
+      version: 3,
       skipHydration: true,
       partialize: (state) => ({ lines: state.lines, orderType: state.orderType }),
       migrate: (persistedState) => {
