@@ -77,7 +77,7 @@ The frontend and backend are built in sequence. See [`backend/README.md`](backen
 - Checkout uses React Hook Form with `zodResolver` and the shared `createOrderRequestSchema`; the same contract is available to API consumers.
 - Pickup, Delivery, and Dine-in are supported. Name and a 10-digit Indian mobile number are always required.
 - The address block (line 1, line 2, landmark, city, and pincode) is rendered and validated only for Delivery. Phone and pincode inputs use numeric mobile keyboards.
-- Field-level Zod errors are shown inline, and the submit button remains disabled until the active form is valid.
+- Field-level Zod errors are shown inline; checkout waits for persisted-cart hydration and a current server quote, and the submit button remains disabled until the active form is valid.
 
 ---
 
