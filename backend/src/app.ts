@@ -15,6 +15,7 @@ import { menuRouter } from './modules/menu/menu.routes';
 import { authRouter } from './modules/auth/auth.routes';
 import { requireAdmin } from './middleware/auth.middleware';
 import { adminRouter } from './modules/admin/admin.routes';
+import { orderRouter } from './modules/orders/order.routes';
 
 const app = express();
 
@@ -82,6 +83,7 @@ app.get(
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/admin', requireAdmin, adminRouter);
 app.use('/api/v1', menuRouter);
+app.use('/api/v1', orderRouter);
 
 app.use(notFoundHandler);
 

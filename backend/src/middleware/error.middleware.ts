@@ -39,7 +39,7 @@ export function errorHandler(
   }
 
   if (err instanceof AppError) {
-    sendError(res, err.code, err.message, err.httpStatus, undefined, requestId);
+    sendError(res, err.code, err.message, err.httpStatus, err.details, requestId);
     return;
   }
 

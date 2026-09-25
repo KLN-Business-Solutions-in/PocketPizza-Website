@@ -1,19 +1,21 @@
 export class AppError extends Error {
   public readonly code: string;
   public readonly httpStatus: number;
+  public readonly details?: string[];
 
-  constructor(code: string, message: string, httpStatus: number) {
+  constructor(code: string, message: string, httpStatus: number, details?: string[]) {
     super(message);
     this.name = this.constructor.name;
     this.code = code;
     this.httpStatus = httpStatus;
+    this.details = details;
     Error.captureStackTrace(this, this.constructor);
   }
 }
 
 export class ValidationError extends AppError {
   constructor(message = 'Validation failed', details?: string[]) {
-    super('VALIDATION_ERROR', message, 400);
+    super('VALIDATION_ERROR', message, 400, details);
     if (details) {
       this.message = `${message}: ${details.join(', ')}`;
     }
