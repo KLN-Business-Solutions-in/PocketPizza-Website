@@ -5,7 +5,7 @@ import { useMenuFlat } from "@/lib/api/useMenu";
 import { lineKey, useCartStore } from "@/lib/cart/store";
 import { addDecimals, calculateIndicativeTotal, calculateIndicativeUnitPrice, formatINR } from "@/lib/money";
 import { Button } from "@/components/ui/Button";
-import { Card, EmptyState, ErrorState } from "@/components/ui/LayoutPrimitives";
+import { Card, EmptyState, ErrorState, Skeleton } from "@/components/ui/LayoutPrimitives";
 import type { OrderType } from "@shared/contract/contract";
 
 const ORDER_TYPES: OrderType[] = ["DELIVERY", "PICKUP", "DINE_IN"];
@@ -13,6 +13,7 @@ const ORDER_TYPES: OrderType[] = ["DELIVERY", "PICKUP", "DINE_IN"];
 export default function CartPage() {
   const { products, isPending, isFetching, isError, refetch } = useMenuFlat();
   const lines = useCartStore((state) => state.lines);
+  const hydrated = useCartStore((state) => state.hydrated);
   const orderType = useCartStore((state) => state.orderType);
   const setOrderType = useCartStore((state) => state.setOrderType);
   const updateQty = useCartStore((state) => state.updateQty);
@@ -56,6 +57,17 @@ export default function CartPage() {
     : availabilityReady
       ? "One or more saved customizations are no longer available. Review your cart before checkout."
       : "Checking live availability before checkout…";
+
+  if (!hydrated) {
+    return (
+      <div className="space-y-3 pb-12" role="status" aria-live="polite">
+        <p className="sr-only">Loading your saved cart</p>
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-28 w-full" />
+        <Skeleton className="h-28 w-full" />
+      </div>
+    );
+  }
 
   if (lines.length === 0) {
     return (

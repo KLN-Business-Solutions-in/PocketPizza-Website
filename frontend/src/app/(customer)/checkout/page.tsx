@@ -11,7 +11,7 @@ import { formatINR } from "@/lib/money";
 import { ApiError } from "@/lib/api/client";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Card, ErrorState } from "@/components/ui/LayoutPrimitives";
+import { Card, ErrorState, Skeleton } from "@/components/ui/LayoutPrimitives";
 import {
   createOrderRequestSchema,
   type CreateOrderRequest,
@@ -36,17 +36,29 @@ function orderItems(lines: CartLine[]): CheckoutFormOutput["items"] {
   }));
 }
 
+type SignatureItem = {
+  menuItemId: string;
+  variantId?: string;
+  addOnIds?: string[];
+  quantity: number;
+};
+
+function signatureForItems(items: SignatureItem[]): string {
+  return items
+    .map((item) => `${item.menuItemId}|${item.variantId ?? ""}|${(item.addOnIds ?? []).join(",")}:${item.quantity}`)
+    .join(";");
+}
+
 export default function CheckoutPage() {
   const router = useRouter();
   const lines = useCartStore((state) => state.lines);
+  const hydrated = useCartStore((state) => state.hydrated);
   const storedOrderType = useCartStore((state) => state.orderType);
   const setOrderType = useCartStore((state) => state.setOrderType);
   const clear = useCartStore((state) => state.clear);
 
   const formItems = React.useMemo(() => orderItems(lines), [lines]);
-  const cartSignature = lines
-    .map((line) => `${line.menuItemId}|${line.variantId ?? ""}|${line.addOnIds.join(",")}:${line.quantity}`)
-    .join(";");
+  const cartSignature = signatureForItems(lines);
   const [idempotencyKey, setIdempotencyKey] = React.useState(() => newIdempotencyKey());
 
   const {
@@ -74,6 +86,12 @@ export default function CheckoutPage() {
   const quote = useQuote();
   const createOrder = useCreateOrder();
   const [formError, setFormError] = React.useState<string | null>(null);
+  const quoteSignature = quote.variables ? signatureForItems(quote.variables.items) : "";
+  const quoteReady =
+    quote.isSuccess &&
+    quote.data !== undefined &&
+    quote.variables?.orderType === activeOrderType &&
+    quoteSignature === cartSignature;
 
   React.useEffect(() => {
     if (!dirtyFields.orderType && selectedOrderType !== storedOrderType) {
@@ -142,12 +160,24 @@ export default function CheckoutPage() {
       const api = err as ApiError;
       if (api?.code === "ORDER_INVALID") {
         const details = Array.isArray(api.details) ? api.details.join(" ") : "";
+        refreshQuote();
         setFormError(`${api.message} ${details}`.trim());
       } else {
         setFormError(api?.message || "Failed to place order. Please try again.");
       }
     }
   });
+
+  if (!hydrated) {
+    return (
+      <div className="space-y-4 pb-12" role="status" aria-live="polite">
+        <p className="sr-only">Loading your saved cart</p>
+        <Skeleton className="h-8 w-40" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
 
   if (lines.length === 0) {
     return (
@@ -349,11 +379,16 @@ export default function CheckoutPage() {
           type="submit"
           size="lg"
           className="w-full"
-          disabled={!isValid || formItems.length === 0}
+          disabled={!isValid || !quoteReady || formItems.length === 0}
           isLoading={isSubmitting || createOrder.isPending}
         >
           Place order · {quote.data ? formatINR(quote.data.total) : "—"}
         </Button>
+        {!quoteReady && (
+          <p className="text-center text-caption text-mutedGray">
+            Waiting for a current server quote before placing the order.
+          </p>
+        )}
         <p className="text-caption text-mutedGray">
           Pay at store. WhatsApp confirmation follows — its failure never cancels your order.
         </p>
