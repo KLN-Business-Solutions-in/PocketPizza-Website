@@ -124,10 +124,12 @@ export default function MenuManagerPage() {
                 basePrice={it.basePrice}
                 isActive={(it as { isActive?: boolean }).isActive ?? true}
                 onToggle={async () => {
+                  setFormError(null);
                   setTogglingId(it.id);
                   try {
                     await toggle.mutateAsync(it.id);
-                    menu.refetch();
+                  } catch (err) {
+                    setFormError((err as Error)?.message || "Toggle failed.");
                   } finally {
                     setTogglingId(null);
                   }

@@ -79,6 +79,79 @@ export type MenuResponse = {
 
 export type ProductDetailResponse = MenuItem;
 
+// Runtime schemas for the public menu endpoints. The TypeScript types above
+// remain the source of truth; these schemas make contract drift visible at the
+// API boundary instead of allowing malformed data to reach UI components.
+const decimalStringSchema = z.string().regex(/^\d+(\.\d{1,2})?$/);
+
+export const ErrorEnvelopeSchema = z
+  .object({
+    success: z.literal(false),
+    error: z
+      .object({
+        code: z.string(),
+        message: z.string(),
+        details: z.array(z.string()).optional(),
+      })
+      .strict(),
+    requestId: z.string().min(1),
+  })
+  .strict();
+
+export const SuccessEnvelopeSchema = z
+  .object({
+    success: z.literal(true),
+    data: z.unknown(),
+    requestId: z.string().min(1),
+  })
+  .strict();
+
+export const MenuItemAddonSchema = z
+  .object({
+    id: z.string().min(1),
+    label: z.string(),
+    price: decimalStringSchema,
+  })
+  .strict();
+
+export const MenuItemVariantSchema = z
+  .object({
+    id: z.string().min(1),
+    label: z.string(),
+    priceDelta: decimalStringSchema,
+  })
+  .strict();
+
+export const MenuItemSchema = z
+  .object({
+    id: z.string().min(1),
+    name: z.string().min(1),
+    description: z.string().nullable(),
+    basePrice: decimalStringSchema,
+    imageUrl: z.string().url().nullable(),
+    isVeg: z.boolean(),
+    variants: z.array(MenuItemVariantSchema),
+    addOns: z.array(MenuItemAddonSchema),
+  })
+  .strict();
+
+export const CategorySchema = z
+  .object({
+    id: z.string().min(1),
+    name: z.string().min(1),
+    sortOrder: z.number().int(),
+    items: z.array(MenuItemSchema),
+  })
+  .strict();
+
+export const MenuResponseSchema = z
+  .object({
+    categories: z.array(CategorySchema),
+  })
+  .strict();
+
+export const ProductDetailResponseSchema = MenuItemSchema;
+
 // 4. ORDERS — Quote
 export const quoteItemSchema = z.object({
   menuItemId: z.string().min(1),
@@ -120,24 +193,57 @@ export type QuoteResponse = {
 
 // 5. ORDERS — Create
 export const addressSchema = z.object({
-  line1: z.string().min(1).max(255),
-  line2: z.string().max(255).optional(),
-  landmark: z.string().max(255).optional(),
-  city: z.string().min(1).max(100),
-  pincode: z.string().min(1).max(10),
+  line1: z.string().trim().min(1, "Address line 1 is required.").max(255),
+  line2: z.string().trim().max(255).optional(),
+  landmark: z.string().trim().max(255).optional(),
+  city: z.string().trim().min(1, "City is required for delivery.").max(100),
+  pincode: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, "Enter a valid 6-digit pincode."),
 });
 
-export const createOrderRequestSchema = z.object({
-  orderType: OrderType,
-  items: z.array(quoteItemSchema).min(1),
-  customer: z.object({
-    name: z.string().min(1).max(255),
-    phone: z.string().min(10).max(15),
-  }),
-  address: addressSchema.optional(),
-  notes: z.string().max(500).optional(),
-  idempotencyKey: z.string().uuid().optional(),
-});
+export const createOrderRequestSchema = z
+  .object({
+    orderType: OrderType,
+    items: z.array(quoteItemSchema).min(1),
+    customer: z.object({
+      name: z.string().trim().min(1, "Name is required.").max(255),
+      phone: z
+        .string()
+        .trim()
+        .regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit Indian mobile number."),
+    }),
+    address: addressSchema.optional(),
+    notes: z.string().trim().max(500).optional(),
+    idempotencyKey: z.string().uuid().optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.orderType !== "DELIVERY") return;
+
+    if (!value.address) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["address"],
+        message: "Delivery address is required.",
+      });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["address", "line1"],
+        message: "Address line 1 is required for delivery.",
+      });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["address", "city"],
+        message: "City is required for delivery.",
+      });
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["address", "pincode"],
+        message: "Pincode is required for delivery.",
+      });
+    }
+  });
 
 export type CreateOrderRequest = z.infer<typeof createOrderRequestSchema>;
 
