@@ -2,124 +2,182 @@
 
 import React from "react";
 import { useRouter } from "next/navigation";
-import { useCartStore } from "@/lib/cart/store";
+import { useForm, useWatch } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useCartStore, type CartLine } from "@/lib/cart/store";
 import { newIdempotencyKey, quotePayload, useCreateOrder, useQuote } from "@/lib/api/orders";
-import { normalizeIndianPhone } from "@/lib/phone";
 import { formatINR } from "@/lib/money";
 import { ApiError } from "@/lib/api/client";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Card, ErrorState } from "@/components/ui/LayoutPrimitives";
-import type { CreateOrderRequest, OrderType } from "@shared/contract/contract";
+import { Card, ErrorState, Skeleton } from "@/components/ui/LayoutPrimitives";
+import {
+  createOrderRequestSchema,
+  type CreateOrderRequest,
+  type OrderType,
+} from "@shared/contract/contract";
 
-const ORDER_TYPES: OrderType[] = ["DELIVERY", "PICKUP", "DINE_IN"];
+const ORDER_TYPES: { value: OrderType; label: string }[] = [
+  { value: "DELIVERY", label: "Delivery" },
+  { value: "PICKUP", label: "Pickup" },
+  { value: "DINE_IN", label: "Dine-in" },
+];
+
+type CheckoutFormInput = z.input<typeof createOrderRequestSchema>;
+type CheckoutFormOutput = z.output<typeof createOrderRequestSchema>;
+
+function orderItems(lines: CartLine[]): CheckoutFormOutput["items"] {
+  return lines.map((line) => ({
+    menuItemId: line.menuItemId,
+    variantId: line.variantId,
+    addOnIds: line.addOnIds ?? [],
+    quantity: line.quantity,
+  }));
+}
+
+type SignatureItem = {
+  menuItemId: string;
+  variantId?: string;
+  addOnIds?: string[];
+  quantity: number;
+};
+
+function signatureForItems(items: SignatureItem[]): string {
+  return items
+    .map((item) => `${item.menuItemId}|${item.variantId ?? ""}|${(item.addOnIds ?? []).join(",")}:${item.quantity}`)
+    .join(";");
+}
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const lines = useCartStore((s) => s.lines);
-  const orderType = useCartStore((s) => s.orderType);
-  const setOrderType = useCartStore((s) => s.setOrderType);
-  const clear = useCartStore((s) => s.clear);
+  const lines = useCartStore((state) => state.lines);
+  const hydrated = useCartStore((state) => state.hydrated);
+  const storedOrderType = useCartStore((state) => state.orderType);
+  const setOrderType = useCartStore((state) => state.setOrderType);
+  const clear = useCartStore((state) => state.clear);
 
-  const [name, setName] = React.useState("");
-  const [phone, setPhone] = React.useState("");
-  const [line1, setLine1] = React.useState("");
-  const [line2, setLine2] = React.useState("");
-  const [landmark, setLandmark] = React.useState("");
-  const [city, setCity] = React.useState("");
-  const [pincode, setPincode] = React.useState("");
-  const [notes, setNotes] = React.useState("");
-  const [formError, setFormError] = React.useState<string | null>(null);
+  const formItems = React.useMemo(() => orderItems(lines), [lines]);
+  const cartSignature = signatureForItems(lines);
+  const [idempotencyKey, setIdempotencyKey] = React.useState(() => newIdempotencyKey());
 
+  const {
+    register,
+    control,
+    handleSubmit,
+    setValue,
+    formState: { dirtyFields, errors, isSubmitting, isValid },
+  } = useForm<CheckoutFormInput, unknown, CheckoutFormOutput>({
+    resolver: zodResolver(createOrderRequestSchema),
+    mode: "onChange",
+    reValidateMode: "onChange",
+    shouldUnregister: true,
+    defaultValues: {
+      orderType: storedOrderType,
+      items: formItems,
+      customer: { name: "", phone: "" },
+      notes: "",
+      idempotencyKey: idempotencyKey,
+    },
+  });
+
+  const selectedOrderType = useWatch({ control, name: "orderType" });
+  const activeOrderType = selectedOrderType ?? storedOrderType;
   const quote = useQuote();
   const createOrder = useCreateOrder();
-  // One idempotency key per checkout attempt (§19). Regenerated after success.
-  const idempotencyRef = React.useRef<string>(newIdempotencyKey());
-
-  const cartSignature = lines
-    .map((line) => `${line.menuItemId}|${line.variantId ?? ""}|${line.addOnIds.join(",")}:${line.quantity}`)
-    .join(";");
+  const [formError, setFormError] = React.useState<string | null>(null);
+  const quoteSignature = quote.variables ? signatureForItems(quote.variables.items) : "";
+  const quoteReady =
+    quote.isSuccess &&
+    quote.data !== undefined &&
+    quote.variables?.orderType === activeOrderType &&
+    quoteSignature === cartSignature;
 
   React.useEffect(() => {
-    if (lines.length === 0) return;
+    if (!dirtyFields.orderType && selectedOrderType !== storedOrderType) {
+      setValue("orderType", storedOrderType, { shouldValidate: true });
+    }
+  }, [dirtyFields.orderType, selectedOrderType, setValue, storedOrderType]);
+
+  React.useEffect(() => {
+    setValue("items", formItems, { shouldValidate: true });
+  }, [formItems, setValue]);
+
+  React.useEffect(() => {
+    if (formItems.length === 0) {
+      quote.reset();
+      return;
+    }
+
     quote.reset();
-    quote.mutate(quotePayload(orderType, lines));
+    quote.mutate(quotePayload(activeOrderType, lines));
     // Re-run when any line's options or quantity changes, not just line count.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cartSignature, orderType]);
+  }, [cartSignature, activeOrderType]);
 
   const refreshQuote = () => {
     setFormError(null);
     quote.reset();
-    if (lines.length > 0) quote.mutate(quotePayload(orderType, lines));
+    if (formItems.length > 0) quote.mutate(quotePayload(activeOrderType, lines));
   };
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const selectOrderType = (nextType: OrderType) => {
+    setOrderType(nextType);
+    setValue("orderType", nextType, { shouldDirty: true, shouldValidate: true });
+    if (nextType !== "DELIVERY") {
+      setValue("address", undefined, { shouldDirty: true, shouldValidate: true });
+    }
+  };
+
+  const submit = handleSubmit(async (values) => {
     setFormError(null);
 
-    if (lines.length === 0) {
+    if (formItems.length === 0) {
       setFormError("Your cart is empty.");
-      return;
-    }
-    let normalizedPhone: string;
-    try {
-      normalizedPhone = normalizeIndianPhone(phone);
-    } catch (err) {
-      setFormError((err as Error).message);
-      return;
-    }
-    if (!name.trim()) {
-      setFormError("Please enter your name.");
-      return;
-    }
-    if (orderType === "DELIVERY" && (!line1.trim() || !city.trim() || !pincode.trim())) {
-      setFormError("Address line 1, city and pincode are required for delivery.");
       return;
     }
 
     // Display snapshots stay client-side; the server receives IDs/options only
     // and recomputes the authoritative price.
     const body: CreateOrderRequest = {
-      orderType,
-      items: lines.map((l) => ({
-        menuItemId: l.menuItemId,
-        variantId: l.variantId,
-        addOnIds: l.addOnIds ?? [],
-        quantity: l.quantity,
-      })),
-      customer: { name: name.trim(), phone: normalizedPhone },
-      ...(orderType === "DELIVERY"
-        ? {
-            address: {
-              line1: line1.trim(),
-              line2: line2.trim() || undefined,
-              landmark: landmark.trim() || undefined,
-              city: city.trim(),
-              pincode: pincode.trim(),
-            },
-          }
+      orderType: values.orderType,
+      items: formItems,
+      customer: values.customer,
+      ...(values.orderType === "DELIVERY" && values.address
+        ? { address: values.address }
         : {}),
-      ...(notes.trim() ? { notes: notes.trim() } : {}),
-      idempotencyKey: idempotencyRef.current,
+      ...(values.notes ? { notes: values.notes } : {}),
+      idempotencyKey: idempotencyKey,
     };
 
     try {
       const res = await createOrder.mutateAsync(body);
       clear();
-      idempotencyRef.current = newIdempotencyKey();
+      setIdempotencyKey(newIdempotencyKey());
       // Public lookup uses publicToken, never orderNumber (§11.5, §16.13).
       router.push(`/order/${res.publicToken}`);
     } catch (err) {
       const api = err as ApiError;
       if (api?.code === "ORDER_INVALID") {
         const details = Array.isArray(api.details) ? api.details.join(" ") : "";
+        refreshQuote();
         setFormError(`${api.message} ${details}`.trim());
       } else {
         setFormError(api?.message || "Failed to place order. Please try again.");
       }
     }
-  };
+  });
+
+  if (!hydrated) {
+    return (
+      <div className="space-y-4 pb-12" role="status" aria-live="polite">
+        <p className="sr-only">Loading your saved cart</p>
+        <Skeleton className="h-8 w-40" />
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
 
   if (lines.length === 0) {
     return (
@@ -137,27 +195,42 @@ export default function CheckoutPage() {
       <h1 className="text-h2 font-heading font-bold">Checkout</h1>
 
       <Card>
-        <label className="block text-label font-medium">Order type</label>
-        <div className="mt-2 flex gap-2">
-          {ORDER_TYPES.map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setOrderType(t)}
-              className={`rounded-full px-4 py-2 text-xs font-heading font-semibold ${
-                orderType === t ? "bg-brand-red text-white" : "bg-neutralTint text-charcoal"
-              }`}
-            >
-              {t.replace("_", " ")}
-            </button>
-          ))}
-        </div>
+        <fieldset>
+          <legend className="text-label font-medium">Order type</legend>
+          <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-label="Order type">
+            {ORDER_TYPES.map(({ value, label }) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={activeOrderType === value}
+                onClick={() => selectOrderType(value)}
+                className={`rounded-full px-4 py-2 text-xs font-heading font-semibold ${
+                  activeOrderType === value
+                    ? "bg-brand-red text-white"
+                    : "bg-neutralTint text-charcoal hover:bg-blushTint hover:text-brand-red"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </fieldset>
+        {errors.orderType?.message && (
+          <p className="mt-2 text-caption text-brand-red" role="alert">
+            {errors.orderType.message}
+          </p>
+        )}
       </Card>
 
       <Card>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <h2 className="font-heading font-bold">Price summary (from server)</h2>
-          <button onClick={refreshQuote} className="text-caption font-bold text-brand-red underline">
+          <button
+            type="button"
+            onClick={refreshQuote}
+            className="text-caption font-bold text-brand-red underline"
+          >
             Refresh quote
           </button>
         </div>
@@ -195,38 +268,127 @@ export default function CheckoutPage() {
         </p>
       </Card>
 
-      <form onSubmit={submit} className="space-y-4">
+      <form onSubmit={submit} noValidate className="space-y-4">
         <Card>
-          <h2 className="font-heading font-bold">Contact</h2>
+          <h2 className="font-heading font-bold">Contact details</h2>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
-            <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Anjali" required />
-            <Input label="Phone (10-digit Indian mobile)" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="9876543210" required />
+            <Input
+              id="checkout-name"
+              label="Name"
+              autoComplete="name"
+              placeholder="Anjali"
+              required
+              {...register("customer.name")}
+              error={errors.customer?.name?.message}
+              aria-invalid={Boolean(errors.customer?.name)}
+            />
+            <Input
+              id="checkout-phone"
+              label="Phone (10-digit Indian mobile)"
+              type="tel"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={10}
+              autoComplete="tel-national"
+              placeholder="9876543210"
+              required
+              {...register("customer.phone")}
+              error={errors.customer?.phone?.message}
+              aria-invalid={Boolean(errors.customer?.phone)}
+            />
           </div>
         </Card>
 
-        {orderType === "DELIVERY" && (
+        {activeOrderType === "DELIVERY" && (
           <Card>
             <h2 className="font-heading font-bold">Delivery address</h2>
+            {errors.address?.message && (
+              <p className="mt-2 text-caption text-brand-red" role="alert">
+                {errors.address.message}
+              </p>
+            )}
             <div className="mt-3 grid gap-3 md:grid-cols-2">
-              <Input label="Line 1 *" value={line1} onChange={(e) => setLine1(e.target.value)} placeholder="Flat 203" />
-              <Input label="Line 2" value={line2} onChange={(e) => setLine2(e.target.value)} placeholder="ABC Society" />
-              <Input label="Landmark" value={landmark} onChange={(e) => setLandmark(e.target.value)} placeholder="Near Park" />
-              <Input label="City *" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Pune" />
-              <Input label="Pincode *" value={pincode} onChange={(e) => setPincode(e.target.value)} placeholder="411001" />
+              <Input
+                id="checkout-line1"
+                label="Address line 1"
+                autoComplete="address-line1"
+                placeholder="Flat 203"
+                required
+                {...register("address.line1")}
+                error={errors.address?.line1?.message}
+                aria-invalid={Boolean(errors.address?.line1)}
+              />
+              <Input
+                id="checkout-line2"
+                label="Address line 2 (optional)"
+                autoComplete="address-line2"
+                placeholder="ABC Society"
+                {...register("address.line2")}
+                error={errors.address?.line2?.message}
+              />
+              <Input
+                id="checkout-landmark"
+                label="Landmark (optional)"
+                autoComplete="address-line3"
+                placeholder="Near Park"
+                {...register("address.landmark")}
+                error={errors.address?.landmark?.message}
+              />
+              <Input
+                id="checkout-city"
+                label="City"
+                autoComplete="address-level2"
+                placeholder="Pune"
+                required
+                {...register("address.city")}
+                error={errors.address?.city?.message}
+                aria-invalid={Boolean(errors.address?.city)}
+              />
+              <Input
+                id="checkout-pincode"
+                label="Pincode"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                autoComplete="postal-code"
+                placeholder="411001"
+                required
+                {...register("address.pincode")}
+                error={errors.address?.pincode?.message}
+                aria-invalid={Boolean(errors.address?.pincode)}
+              />
             </div>
           </Card>
         )}
 
         <Card>
-          <h2 className="font-heading font-bold">Notes (optional)</h2>
-          <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Less spicy" maxLength={500} />
+          <h2 className="font-heading font-bold">Order notes (optional)</h2>
+          <Input
+            id="checkout-notes"
+            label="Notes"
+            placeholder="Less spicy"
+            maxLength={500}
+            {...register("notes")}
+            error={errors.notes?.message}
+          />
         </Card>
 
         {formError && <ErrorState message={formError} />}
 
-        <Button type="submit" size="lg" className="w-full" isLoading={createOrder.isPending}>
-          Place Order · {quote.data ? formatINR(quote.data.total) : "—"}
+        <Button
+          type="submit"
+          size="lg"
+          className="w-full"
+          disabled={!isValid || !quoteReady || formItems.length === 0}
+          isLoading={isSubmitting || createOrder.isPending}
+        >
+          Place order · {quote.data ? formatINR(quote.data.total) : "—"}
         </Button>
+        {!quoteReady && (
+          <p className="text-center text-caption text-mutedGray">
+            Waiting for a current server quote before placing the order.
+          </p>
+        )}
         <p className="text-caption text-mutedGray">
           Pay at store. WhatsApp confirmation follows — its failure never cancels your order.
         </p>

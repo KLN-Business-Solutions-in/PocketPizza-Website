@@ -37,10 +37,17 @@ const STATUSES: (OrderStatus | "")[] = [
 ];
 
 function today(): string {
-  // Restaurant business date in Asia/Kolkata (IST)
-  const now = new Date();
-  const ist = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
-  return ist.toISOString().slice(0, 10);
+  // Restaurant business date in Asia/Kolkata (IST).
+  // Read the wall-clock parts in that zone directly: re-parsing a localized
+  // string would reinterpret it in the runtime's own zone and skew the date.
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const p = Object.fromEntries(parts.map((x) => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day}`;
 }
 
 export default function AdminDashboardPage() {
@@ -60,6 +67,21 @@ export default function AdminDashboardPage() {
   const updateStatus = useUpdateOrderStatus(selectedId ?? "");
   const report = useReportSummary(reportFrom, reportTo, session.data?.ok === true);
   const [statusError, setStatusError] = React.useState<string | null>(null);
+  const [logoutError, setLogoutError] = React.useState<string | null>(null);
+
+  // Redirect only once the server confirms the session was revoked. On failure
+  // the cookie is still live, so stay put and surface the error instead.
+  // Cache invalidation is the mutation's onSettled, so it runs either way.
+  const doLogout = async () => {
+    setLogoutError(null);
+    try {
+      await logout.mutateAsync();
+      router.replace("/admin/login");
+    } catch (err) {
+      const api = err as ApiError;
+      setLogoutError(api?.message || "Logout failed. Please try again.");
+    }
+  };
 
   React.useEffect(() => {
     if (session.data?.ok === false) router.replace("/admin/login");
@@ -102,19 +124,16 @@ export default function AdminDashboardPage() {
         <Button
           variant="outline"
           size="sm"
-          onClick={async () => {
-            try {
-              await logout.mutateAsync();
-            } catch {
-              // Logout failed — still redirect after cache invalidation
-            } finally {
-              router.replace("/admin/login");
-            }
-          }}
+          onClick={doLogout}
+          isLoading={logout.isPending}
         >
           Logout
         </Button>
       </div>
+
+      {logoutError && (
+        <ErrorState message={logoutError} onRetry={doLogout} />
+      )}
 
       {report.data && (
         <Card>

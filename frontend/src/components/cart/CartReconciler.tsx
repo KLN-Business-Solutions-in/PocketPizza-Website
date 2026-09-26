@@ -27,8 +27,11 @@ export function CartReconciler() {
   // Trigger rehydration on mount
   useEffect(() => {
     const rehydrate = async () => {
-      await useCartStore.persist.rehydrate();
-      setHydrated(true);
+      try {
+        await useCartStore.persist.rehydrate();
+      } finally {
+        setHydrated(true);
+      }
     };
     rehydrate();
   }, [setHydrated]);

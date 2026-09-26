@@ -36,6 +36,8 @@ export default function Navbar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const cartCount = useCartStore((s) => s.lines.reduce((n, l) => n + l.quantity, 0));
+  const hydrated = useCartStore((s) => s.hydrated);
+  const cartLabel = hydrated ? `Cart (${cartCount})` : "Cart";
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
@@ -79,10 +81,10 @@ export default function Navbar() {
           <Link
             href="/cart"
             className="flex items-center gap-1.5 rounded-full bg-blushTint px-4 py-2 font-heading text-xs font-semibold text-brand-red transition-colors hover:bg-brand-red hover:text-white"
-            aria-label={`Cart, ${cartCount} ${cartCount === 1 ? "item" : "items"}`}
+            aria-label={hydrated ? `Cart, ${cartCount} ${cartCount === 1 ? "item" : "items"}` : "Cart"}
           >
             <BagIcon className="h-3.5 w-3.5" />
-            Cart ({cartCount})
+            {cartLabel}
           </Link>
           <button
             type="button"

@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useMenuFlat } from "@/lib/api/useMenu";
 import { lineKey, useCartStore } from "@/lib/cart/store";
-import { calculateIndicativeTotal, calculateIndicativeUnitPrice, formatINR } from "@/lib/money";
+import { addDecimals, calculateIndicativeTotal, calculateIndicativeUnitPrice, formatINR } from "@/lib/money";
 import { Button } from "@/components/ui/Button";
-import { Card, EmptyState, ErrorState } from "@/components/ui/LayoutPrimitives";
+import { Card, EmptyState, ErrorState, Skeleton } from "@/components/ui/LayoutPrimitives";
 import type { OrderType } from "@shared/contract/contract";
 
 const ORDER_TYPES: OrderType[] = ["DELIVERY", "PICKUP", "DINE_IN"];
@@ -13,6 +13,7 @@ const ORDER_TYPES: OrderType[] = ["DELIVERY", "PICKUP", "DINE_IN"];
 export default function CartPage() {
   const { products, isPending, isFetching, isError, refetch } = useMenuFlat();
   const lines = useCartStore((state) => state.lines);
+  const hydrated = useCartStore((state) => state.hydrated);
   const orderType = useCartStore((state) => state.orderType);
   const setOrderType = useCartStore((state) => state.setOrderType);
   const updateQty = useCartStore((state) => state.updateQty);
@@ -20,6 +21,53 @@ export default function CartPage() {
 
   const byId = new Map(products.map((product) => [product.id, product]));
   const availabilityReady = !isPending && !isFetching && !isError;
+  const indicativeSubtotal = lines.reduce((subtotal, line) => {
+    const product = byId.get(line.menuItemId);
+    const variant = product?.variants.find((item) => item.id === line.variantId);
+    const addOns = line.addOnIds
+      .map((id) => product?.addOns.find((addOn) => addOn.id === id))
+      .filter((addOn): addOn is NonNullable<typeof addOn> => Boolean(addOn));
+    const customizationAvailable = Boolean(
+      product &&
+        (!line.variantId || variant) &&
+        line.addOnIds.every((id) => product.addOns.some((addOn) => addOn.id === id))
+    );
+    const unitPrice = product && customizationAvailable
+      ? calculateIndicativeUnitPrice(
+          product.basePrice,
+          variant?.priceDelta,
+          addOns.map((addOn) => addOn.price)
+        )
+      : line.displayPrice !== "0.00"
+        ? line.displayPrice
+        : null;
+    return unitPrice
+      ? addDecimals(subtotal, calculateIndicativeTotal(unitPrice, line.quantity))
+      : subtotal;
+  }, "0.00");
+  const allLinesReady = lines.every((line) => {
+    const product = byId.get(line.menuItemId);
+    const hasVariant = !line.variantId || product?.variants.some((item) => item.id === line.variantId);
+    const hasAddOns = line.addOnIds.every((id) => product?.addOns.some((addOn) => addOn.id === id));
+    return Boolean(product && hasVariant && hasAddOns);
+  });
+  const canProceed = availabilityReady && allLinesReady;
+  const checkoutBlockedMessage = isError
+    ? "We could not confirm live availability. Please retry before checkout."
+    : availabilityReady
+      ? "One or more saved customizations are no longer available. Review your cart before checkout."
+      : "Checking live availability before checkout…";
+
+  if (!hydrated) {
+    return (
+      <div className="space-y-3 pb-12" role="status" aria-live="polite">
+        <p className="sr-only">Loading your saved cart</p>
+        <Skeleton className="h-8 w-32" />
+        <Skeleton className="h-28 w-full" />
+        <Skeleton className="h-28 w-full" />
+      </div>
+    );
+  }
 
   if (lines.length === 0) {
     return (
@@ -76,6 +124,10 @@ export default function CartPage() {
           const addOns = (line.addOnIds || [])
             .map((id) => product?.addOns.find((addOn) => addOn.id === id))
             .filter((addOn): addOn is NonNullable<typeof addOn> => Boolean(addOn));
+          const addOnLabels = addOns.length > 0
+            ? addOns.map((addOn) => addOn.label)
+            : line.addOnLabels ?? [];
+          const variantLabel = variant?.label ?? line.variantLabel;
           const customizationAvailable = Boolean(
             product &&
               (!line.variantId || variant) &&
@@ -105,12 +157,12 @@ export default function CartPage() {
             <Card key={key} className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <h3 className="font-heading font-bold">{line.displayName}</h3>
-                {variant && <p className="text-caption text-bodySecondary">{variant.label}</p>}
-                {addOns.length > 0 && (
-                  <p className="text-caption text-bodySecondary">
-                    + {addOns.map((addOn) => addOn.label).join(", ")}
-                  </p>
-                )}
+                <p className="text-caption text-bodySecondary">
+                  Variant: {variantLabel ?? "Standard"}
+                </p>
+                <p className="text-caption text-bodySecondary">
+                  Add-ons: {addOnLabels.length > 0 ? addOnLabels.join(", ") : "None"}
+                </p>
                 {availabilityMessage && (
                   <p className="mt-1 text-caption text-mutedGray">{availabilityMessage}</p>
                 )}
@@ -157,22 +209,30 @@ export default function CartPage() {
         })}
       </div>
 
-      {!availabilityReady && (
-        <p className="text-center text-caption text-mutedGray">
-          {isError
-            ? "We could not confirm live availability. Please retry before checkout."
-            : "Checking live availability before checkout…"}
+      <Card>
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-body font-semibold">Indicative subtotal</span>
+          <span className="font-heading text-h4 font-extrabold text-brand-red">
+            {formatINR(indicativeSubtotal)}
+          </span>
+        </div>
+        <p className="mt-2 text-caption text-mutedGray">
+          An estimate based on your selected variants and add-ons. The server confirms the final total.
         </p>
+      </Card>
+
+      {!canProceed && (
+        <p className="text-center text-caption text-mutedGray">{checkoutBlockedMessage}</p>
       )}
-      {availabilityReady ? (
+      {canProceed ? (
         <Link href="/checkout">
           <Button type="button" size="lg" className="w-full">
-            Proceed to Checkout
+            Proceed to checkout
           </Button>
         </Link>
       ) : (
         <Button type="button" size="lg" className="w-full" disabled>
-          Proceed to Checkout
+          Proceed to checkout
         </Button>
       )}
     </div>

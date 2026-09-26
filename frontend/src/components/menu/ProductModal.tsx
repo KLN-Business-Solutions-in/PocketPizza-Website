@@ -89,6 +89,8 @@ function ProductModalContent({
       addOnIds: selectedAddOns.map((addOn) => addOn.id),
       quantity,
       displayName: activeProduct.name,
+      variantLabel: selectedVariant?.label,
+      addOnLabels: selectedAddOns.map((addOn) => addOn.label),
       displayPrice: unitPrice,
     });
     onClose();
