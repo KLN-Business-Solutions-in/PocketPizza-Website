@@ -85,16 +85,17 @@ export const quoteItemSchema = z.object({
   variantId: z.string().optional(),
   addOnIds: z
     .array(z.string())
+    .max(20, 'at most 20 add-ons per item')
     .default([])
     .refine((ids) => new Set(ids).size === ids.length, {
       message: "addOnIds must not contain duplicates",
     }),
-  quantity: z.number().int().positive(),
+  quantity: z.number().int().positive().max(99, 'must be between 1 and 99'),
 });
 
 export const quoteRequestSchema = z.object({
   orderType: OrderType,
-  items: z.array(quoteItemSchema).min(1),
+  items: z.array(quoteItemSchema).min(1).max(50, 'at most 50 line items per order'),
 });
 
 export type QuoteRequest = z.infer<typeof quoteRequestSchema>;
@@ -125,24 +126,38 @@ export type QuoteResponse = {
 
 // 5. ORDERS — Create
 export const addressSchema = z.object({
-  line1: z.string().min(1).max(255),
+  line1: z.string().trim().min(1).max(255),
   line2: z.string().max(255).optional(),
   landmark: z.string().max(255).optional(),
-  city: z.string().min(1).max(100),
-  pincode: z.string().min(1).max(10),
+  city: z.string().trim().min(1).max(100),
+  pincode: z.string().trim().regex(/^\d{6}$/, 'must be a 6-digit Indian PIN code'),
 });
 
-export const createOrderRequestSchema = z.object({
-  orderType: OrderType,
-  items: z.array(quoteItemSchema).min(1),
-  customer: z.object({
-    name: z.string().min(1).max(255),
-    phone: z.string().min(10).max(15),
-  }),
-  address: addressSchema.optional(),
-  notes: z.string().max(500).optional(),
-  idempotencyKey: z.string().uuid().optional(),
-});
+export const indianPhoneSchema = z
+  .string()
+  .transform((value) => value.replace(/[\s\-()]/g, ''))
+  .refine((value) => /^(?:\+91|91|0)?[6-9]\d{9}$/.test(value), {
+    message: 'not a valid Indian mobile number',
+  });
+
+export const createOrderRequestSchema = z
+  .object({
+    orderType: OrderType,
+    items: z.array(quoteItemSchema).min(1).max(50, 'at most 50 line items per order'),
+    customer: z.object({
+      name: z.string().trim().min(1).max(255),
+      phone: indianPhoneSchema,
+    }),
+    address: addressSchema.optional(),
+    notes: z.string().max(500).optional(),
+    idempotencyKey: z.string().uuid().optional(),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.orderType === 'DELIVERY' && !value.address) {
+      ctx.addIssue({ code: 'custom', path: ['address'], message: 'required for DELIVERY orders' });
+    }
+  });
 
 export type CreateOrderRequest = z.infer<typeof createOrderRequestSchema>;
 
@@ -172,6 +187,7 @@ export type OrderStatusResponse = {
 };
 
 export type InvoiceItem = {
+  menuItemId: string;
   nameSnapshot: string;
   variantSnapshot: string | null;
   addOnSnapshot: { label: string; price: string }[];
@@ -223,17 +239,22 @@ export type LoginResponse = {
 
 // 8. ADMIN — Menu
 export const createProductRequestSchema = z.object({
-  name: z.string().min(1).max(255),
+  name: z.string().trim().min(1).max(255),
   description: z.string().max(1000).optional(),
   categoryId: z.string().min(1),
-  basePrice: z.string().regex(/^\d+(\.\d{1,2})?$/),
-  imageUrl: z.string().url().optional(),
+  basePrice: z.string().regex(/^\d{1,10}(\.\d{1,2})?$/),
+  imageUrl: z
+    .string()
+    .url()
+    .max(500)
+    .refine((u) => u.startsWith('https://'), { message: 'must be an https URL' })
+    .optional(),
   isVeg: z.boolean().default(true),
   variants: z
     .array(
       z.object({
         label: z.string().min(1).max(100),
-        priceDelta: z.string().regex(/^\d+(\.\d{1,2})?$/),
+        priceDelta: z.string().regex(/^\d{1,10}(\.\d{1,2})?$/),
       }),
     )
     .optional(),
@@ -241,7 +262,7 @@ export const createProductRequestSchema = z.object({
     .array(
       z.object({
         label: z.string().min(1).max(100),
-        price: z.string().regex(/^\d+(\.\d{1,2})?$/),
+        price: z.string().regex(/^\d{1,10}(\.\d{1,2})?$/),
       }),
     )
     .optional(),
@@ -249,7 +270,11 @@ export const createProductRequestSchema = z.object({
 
 export type CreateProductRequest = z.infer<typeof createProductRequestSchema>;
 
-export const updateProductRequestSchema = createProductRequestSchema.partial();
+// .extend overrides isVeg: .partial() would keep the create-side default(true),
+// making parse({}) inject { isVeg: true } into every PATCH.
+export const updateProductRequestSchema = createProductRequestSchema
+  .partial()
+  .extend({ isVeg: z.boolean().optional() });
 export type UpdateProductRequest = z.infer<typeof updateProductRequestSchema>;
 
 export type AdminMenuItem = MenuItem & {

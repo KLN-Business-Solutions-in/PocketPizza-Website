@@ -18,3 +18,15 @@ export async function loginController(req: Request, res: Response): Promise<void
   res.setHeader('Cache-Control', 'no-store');
   sendSuccess<LoginResponse>(res, { admin });
 }
+
+export function logoutController(_req: Request, res: Response): void {
+  res.clearCookie(COOKIE_ADMIN_ACCESS, {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'strict',
+    path: '/',
+  });
+
+  res.setHeader('Cache-Control', 'no-store');
+  sendSuccess(res, { ok: true });
+}

@@ -30,8 +30,6 @@ app.use(
   }),
 );
 
-app.use(express.json({ limit: '100kb' }));
-
 app.use(cookieParser());
 
 app.use((req, _res, next) => {
@@ -43,11 +41,22 @@ app.use(
   pinoHttp({
     logger,
     genReqId: (req) => req.id ?? `req_${crypto.randomUUID().slice(0, 12)}`,
-    redact: ['req.headers.cookie', 'req.headers.authorization'],
+    redact: [
+      'req.headers.cookie',
+      'req.headers.authorization',
+      '*.password',
+      '*.passwordHash',
+      '*.token',
+      '*.refreshToken',
+      '*.accessToken',
+    ],
   }),
 );
 
 app.use(globalRateLimit);
+
+// after req.id + pino-http so parse failures carry a requestId and hit the access log
+app.use(express.json({ limit: '100kb' }));
 
 app.get('/health', (_req, res) => {
   sendSuccess(res, { status: 'ok' });
@@ -55,6 +64,7 @@ app.get('/health', (_req, res) => {
 
 app.get(
   '/health/db',
+  requireAdmin,
   ah(async (_req, res) => {
     const prisma = await getPrisma();
 
