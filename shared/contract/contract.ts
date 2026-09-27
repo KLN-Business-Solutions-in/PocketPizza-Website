@@ -156,7 +156,12 @@ export const ProductDetailResponseSchema = MenuItemSchema;
 export const quoteItemSchema = z.object({
   menuItemId: z.string().min(1),
   variantId: z.string().optional(),
-  addOnIds: z.array(z.string()).default([]),
+  addOnIds: z
+    .array(z.string())
+    .default([])
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: "addOnIds must not contain duplicates",
+    }),
   quantity: z.number().int().positive(),
 });
 
