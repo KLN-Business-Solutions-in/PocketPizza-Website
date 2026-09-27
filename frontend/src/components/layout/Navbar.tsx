@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { useCartStore } from "@/lib/cart/store";
+import { useCartHydrated, useCartStore } from "@/lib/cart/store";
 
 const links = [
   { href: "/", label: "Home" },
@@ -35,6 +35,9 @@ function BagIcon({ className }: { className?: string }) {
 export default function Navbar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  // Gate on hydration so the server-rendered markup and the first client
+  // render agree; the badge fills in once localStorage has been read.
+  const hasHydrated = useCartHydrated();
   const cartCount = useCartStore((s) => s.lines.reduce((n, l) => n + l.quantity, 0));
 
   const isActive = (href: string) => {
@@ -81,7 +84,7 @@ export default function Navbar() {
             className="flex items-center gap-1.5 rounded-full bg-blushTint px-4 py-2 font-heading text-xs font-semibold text-brand-red transition-colors hover:bg-brand-red hover:text-white"
           >
             <BagIcon className="h-3.5 w-3.5" />
-            Cart ({cartCount})
+            {hasHydrated ? `Cart (${cartCount})` : "Cart"}
           </Link>
           <button
             type="button"

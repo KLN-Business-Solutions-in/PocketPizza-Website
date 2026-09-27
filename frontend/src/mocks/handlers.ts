@@ -47,22 +47,42 @@ function fail(code: string, message: string, status: number, details: unknown[] 
 
 type QuoteLine = { menuItemId: string; variantId?: string; addOnIds?: string[]; quantity: number };
 
+/** Thrown by priceQuote; `reason` is already in the backend's wire format. */
+class QuoteRejection extends Error {
+  constructor(readonly index: number, readonly reason: string) {
+    super(reason);
+    this.name = "QuoteRejection";
+  }
+}
+
 function priceQuote(lines: QuoteLine[], orderType: string) {
   const items = lines.map((l, idx) => {
     const product = MOCK_PRODUCTS.find((p) => p.id === l.menuItemId);
-    if (!product) throw { idx, reason: "not-found" };
+    if (!product) {
+      throw new QuoteRejection(idx, `items[${idx}]: "menuItemId" not found`);
+    }
     let unit = Number.parseFloat(product.basePrice);
     let variantLabel: string | null = null;
     if (l.variantId) {
       const v = product.variants.find((x) => x.id === l.variantId);
-      if (!v) throw { idx, reason: "bad-variant" };
+      if (!v) {
+        throw new QuoteRejection(
+          idx,
+          `items[${idx}]: invalid variant for "${product.name}"`
+        );
+      }
       unit += Number.parseFloat(v.priceDelta);
       variantLabel = v.label;
     }
     const addOnSnap: { label: string; price: string }[] = [];
     for (const aid of l.addOnIds ?? []) {
       const a = product.addOns.find((x) => x.id === aid);
-      if (!a) throw { idx, reason: "bad-addon" };
+      if (!a) {
+        throw new QuoteRejection(
+          idx,
+          `items[${idx}]: invalid add-on "${aid}" for "${product.name}"`
+        );
+      }
       unit += Number.parseFloat(a.price);
       addOnSnap.push({ label: a.label, price: a.price });
     }
@@ -108,13 +128,13 @@ export const handlers = [
     try {
       return ok(priceQuote(body.items, body.orderType));
     } catch (e: unknown) {
-      const err = e as { idx?: number };
-      return fail(
-        "ORDER_INVALID",
-        "One or more cart items are no longer available.",
-        400,
-        [{ field: `items[${err?.idx ?? 0}]`, message: "Invalid item/variant/add-on." }]
-      );
+      // Mirrors the backend exactly: code VALIDATION_ERROR, details a string[]
+      // of `items[N]: ...` per offending line, whole quote rejected. The
+      // frontend maps `items[N]` back onto the offending cart line.
+      if (e instanceof QuoteRejection) {
+        return fail("VALIDATION_ERROR", "Quote rejected", 400, [e.reason]);
+      }
+      return fail("VALIDATION_ERROR", "Quote rejected", 400);
     }
   }),
 
@@ -140,8 +160,9 @@ export const handlers = [
         { ...MOCK_CREATE_ORDER, subtotal: q.subtotal, deliveryFee: q.deliveryFee, tax: q.tax, total: q.total },
         201
       );
-    } catch {
-      return fail("ORDER_INVALID", "One or more cart items are no longer available.", 400);
+    } catch (e: unknown) {
+      const details = e instanceof QuoteRejection ? [e.reason] : [];
+      return fail("VALIDATION_ERROR", "Order rejected", 400, details);
     }
   }),
 

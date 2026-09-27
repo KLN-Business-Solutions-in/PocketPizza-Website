@@ -54,11 +54,31 @@ export const Modal: React.FC<{ isOpen: boolean; onClose: () => void; title: stri
   );
 };
 
-export const Toast: React.FC<{ message: string; type?: "success" | "error" }> = ({ message, type = "success" }) => (
-  <div className={cn(
-    "fixed bottom-4 right-4 z-50 px-4 py-3 rounded-md shadow-elevated text-body font-medium flex items-center gap-2",
-    type === "success" ? "bg-status-successBg text-green-900 border border-green-300" : "bg-status-errorBg text-brand-red border border-brand-red"
-  )}>
-    {message}
+export const Toast: React.FC<{
+  message: string;
+  type?: "success" | "error" | "info";
+  onDismiss?: () => void;
+}> = ({ message, type = "success", onDismiss }) => (
+  <div
+    role={type === "error" ? "alert" : "status"}
+    aria-live={type === "error" ? "assertive" : "polite"}
+    className={cn(
+      "pointer-events-auto flex items-start gap-3 rounded-md border px-4 py-3 text-body font-medium shadow-elevated",
+      type === "success" && "border-status-successBg bg-status-successBg text-charcoal",
+      type === "error" && "border-brand-red bg-status-errorBg text-brand-red",
+      type === "info" && "border-border-default bg-white text-charcoal"
+    )}
+  >
+    <span className="flex-1">{message}</span>
+    {onDismiss && (
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label="Dismiss notification"
+        className="shrink-0 font-bold leading-none opacity-60 transition-opacity hover:opacity-100"
+      >
+        ✕
+      </button>
+    )}
   </div>
 );

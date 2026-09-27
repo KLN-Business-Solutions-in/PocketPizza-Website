@@ -3,6 +3,7 @@ import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import { MSWProvider } from "@/components/ui/MSWProvider";
 import { QueryProvider } from "@/components/ui/QueryProvider";
+import { ToastProvider } from "@/components/ui/ToastProvider";
 
 export const metadata: Metadata = {
   title: "Pokket Pizza",
@@ -17,7 +18,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${outfit.variable} ${inter.variable}`}>
       <body className="bg-cream-bg font-body text-charcoal antialiased">
         <MSWProvider>
-          <QueryProvider>{children}</QueryProvider>
+          <QueryProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </QueryProvider>
         </MSWProvider>
       </body>
     </html>
