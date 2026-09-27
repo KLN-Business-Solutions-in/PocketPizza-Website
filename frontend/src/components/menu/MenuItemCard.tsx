@@ -11,61 +11,64 @@ interface MenuItemCardProps {
   onSelect: (product: MenuItem) => void;
 }
 
-const PLACEHOLDER_IMAGE = "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=500&q=80";
+const PLACEHOLDER_IMAGE = "/menu-placeholder.svg";
+const BLUR_DATA_URL =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Crect width='10' height='10' fill='%23f5f3ee'/%3E%3C/svg%3E";
 
 export const MenuItemCard: React.FC<MenuItemCardProps> = ({ product, onSelect }) => {
-  // Parent renders with key={product.id}, so a fresh mount per product makes
-  // initialising from props safe (no prop-sync effect needed).
-  const [imgSrc, setImgSrc] = useState(product.imageUrl || PLACEHOLDER_IMAGE);
-
-  // Backend wire format is decimal strings in INR (§10.7, §18). Never cents/USD.
+  const imageSource = product.imageUrl || PLACEHOLDER_IMAGE;
+  const [failedImageSource, setFailedImageSource] = useState<string | null>(null);
+  const description = product.description?.trim() || "A tasty pick from our kitchen.";
   const formattedPrice = formatINR(product.basePrice);
+  const imgSrc = failedImageSource === imageSource ? PLACEHOLDER_IMAGE : imageSource;
+
+  const handleImageError = () => setFailedImageSource(imageSource);
 
   return (
-    <div className="flex flex-col justify-between rounded-lg border border-border-default bg-white overflow-hidden shadow-card hover:shadow-elevated transition-all group">
-      <div>
-        {/* Responsive Image Container */}
-        <div className="relative w-full h-44 bg-neutralTint overflow-hidden">
-          <Image
-            src={imgSrc}
-            alt={product.name}
-            fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
-            onError={() => setImgSrc(PLACEHOLDER_IMAGE)}
-          />
-          <div className="absolute top-2.5 left-2.5 z-10">
-            <VegNonVegBadge isVeg={product.isVeg} />
-          </div>
+    <article className="group flex h-full flex-col overflow-hidden rounded-lg border border-border-default bg-white shadow-card transition-all hover:-translate-y-0.5 hover:shadow-elevated">
+      <div className="relative h-44 w-full overflow-hidden bg-neutralTint">
+        <Image
+          src={imgSrc}
+          alt={product.name}
+          fill
+          sizes="(max-width: 767px) 100vw, (max-width: 1023px) 50vw, 33vw"
+          className="object-cover transition-transform duration-300 group-hover:scale-105"
+          placeholder="blur"
+          blurDataURL={BLUR_DATA_URL}
+          unoptimized={imgSrc === PLACEHOLDER_IMAGE}
+          onError={handleImageError}
+        />
+        <div className="absolute left-2.5 top-2.5 z-10">
+          <VegNonVegBadge isVeg={product.isVeg} />
         </div>
+      </div>
 
-        {/* Content Details */}
-        <div className="p-4">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="font-heading font-bold text-h4 text-charcoal line-clamp-1">
-              {product.name}
-            </h3>
-          </div>
-          <p className="mt-1 text-caption text-bodySecondary line-clamp-2 leading-relaxed">
-            {product.description}
+      <div className="flex flex-1 flex-col p-4">
+        <div>
+          <h3 className="line-clamp-1 font-heading text-h4 font-bold text-charcoal">
+            {product.name}
+          </h3>
+          <p className="mt-1 line-clamp-2 text-caption leading-relaxed text-bodySecondary">
+            {description}
           </p>
         </div>
-      </div>
 
-      {/* Pricing & CTA */}
-      <div className="p-4 pt-0 flex items-center justify-between mt-2">
-        <div>
-          <span className="text-tag text-mutedGray block uppercase tracking-wide">Starting at</span>
-          <span className="font-heading font-extrabold text-h4 text-brand-red">{formattedPrice}</span>
+        <div className="mt-4 flex items-end justify-between gap-3">
+          <div>
+            <span className="block text-tag uppercase tracking-wide text-mutedGray">Base price</span>
+            <span className="font-heading text-h4 font-extrabold text-brand-red">
+              {formattedPrice}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => onSelect(product)}
+            className="rounded-full bg-blushTint px-4 py-2 font-heading text-xs font-semibold text-brand-red transition-colors hover:bg-brand-red hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
+          >
+            {product.variants.length > 0 || product.addOns.length > 0 ? "Customise" : "View details"}
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => onSelect(product)}
-          className="rounded-full bg-blushTint px-4 py-2 font-heading text-xs font-semibold text-brand-red transition-colors hover:bg-brand-red hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
-        >
-          {product.variants.length > 0 || product.addOns.length > 0 ? "Customise" : "Add to Cart"}
-        </button>
       </div>
-    </div>
+    </article>
   );
 };

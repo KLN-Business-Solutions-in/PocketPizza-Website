@@ -18,7 +18,7 @@ export default function HomePage() {
           src="https://images.unsplash.com/photo-1513104890138-7c749659a591?w=1600&q=80"
           alt="Wood-fired artisan pizza"
           fill
-          loading="eager"
+          priority
           sizes="100vw"
           className="object-cover"
         />

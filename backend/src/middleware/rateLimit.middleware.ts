@@ -1,5 +1,12 @@
 import type { Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
+import { sendError } from '../utils/response';
+
+function rateLimitHandler(code: string, message: string) {
+  return (req: Request, res: Response): void => {
+    sendError(res, code, message, 429, undefined, String(req.id ?? ''));
+  };
+}
 
 function rateLimitBody(message: string) {
   return (req: Request, res: Response): void => {
@@ -40,7 +47,7 @@ export const orderCreateRateLimit = rateLimit({
 });
 
 export const refreshRateLimit = rateLimit({
-  windowMs: 60 * 60 * 1000,
+  windowMs: 30 * 60 * 1000,
   max: 30,
   standardHeaders: true,
   legacyHeaders: false,

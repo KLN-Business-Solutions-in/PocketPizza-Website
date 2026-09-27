@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 import type {
   AdminMenuResponse,
@@ -41,6 +41,11 @@ function toSearch(f: AdminOrderFilters): string {
   p.set("page", String(f.page ?? 1));
   p.set("pageSize", String(Math.min(f.pageSize ?? 20, 100)));
   return `?${p.toString()}`;
+}
+
+function invalidatePublicMenu(qc: QueryClient): void {
+  void qc.invalidateQueries({ queryKey: ["menu"] });
+  void qc.invalidateQueries({ queryKey: ["product"] });
 }
 
 export function useAdminOrders(filters: AdminOrderFilters) {
@@ -96,7 +101,10 @@ export function useCreateProduct() {
   return useMutation({
     mutationFn: (body: CreateProductRequest) =>
       apiFetch("/admin/products", { method: "POST", body: JSON.stringify(body) }),
-    onSettled: () => qc.invalidateQueries({ queryKey: ["admin", "menu"] }),
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ["admin", "menu"] });
+      invalidatePublicMenu(qc);
+    },
   });
 }
 
@@ -108,7 +116,10 @@ export function useUpdateProduct(productId: string) {
         method: "PATCH",
         body: JSON.stringify(body),
       }),
-    onSettled: () => qc.invalidateQueries({ queryKey: ["admin", "menu"] }),
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ["admin", "menu"] });
+      invalidatePublicMenu(qc);
+    },
   });
 }
 
@@ -121,7 +132,10 @@ export function useToggleProductStatus() {
         method: "PATCH",
         body: "{}",
       }),
-    onSettled: () => qc.invalidateQueries({ queryKey: ["admin", "menu"] }),
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: ["admin", "menu"] });
+      invalidatePublicMenu(qc);
+    },
   });
 }
 

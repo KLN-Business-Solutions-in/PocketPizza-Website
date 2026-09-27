@@ -15,13 +15,16 @@ export const VegNonVegBadge: React.FC<{
   const borderColor = veg ? "border-green-600" : "border-brand-red";
   const dotColor = veg ? "bg-green-600" : "bg-brand-red";
   const title = veg ? "Vegetarian" : "Non-Vegetarian";
+
   return (
     <div
       className={cn(
-        "inline-flex items-center justify-center w-4 h-4 p-0.5 border bg-white rounded-xs",
+        "inline-flex h-4 w-4 items-center justify-center rounded-xs border bg-white p-0.5",
         borderColor,
         className
       )}
+      role="img"
+      aria-label={title}
       title={title}
     >
       <div className={cn("w-2 h-2 rounded-full", dotColor)} />
