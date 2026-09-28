@@ -7,7 +7,14 @@ const server = app.listen(env.PORT, () => {
   logger.info({ port: env.PORT, env: env.NODE_ENV }, 'Server started');
 });
 
+let shuttingDown = false;
+
 function shutdown(signal: string): void {
+  // only the first signal owns the timer, close callback, and cleanup —
+  // a second close() would error ("server not open") and exit mid-drain
+  if (shuttingDown) return;
+  shuttingDown = true;
+
   logger.info({ signal }, 'Shutting down');
 
   const forcedShutdown = setTimeout(() => {
@@ -28,6 +35,9 @@ function shutdown(signal: string): void {
         process.exit(0);
       });
   });
+  // reap idle keep-alive sockets so the close callback can fire without
+  // waiting out keepAliveTimeout/the forced-kill deadline
+  server.closeIdleConnections();
 }
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
