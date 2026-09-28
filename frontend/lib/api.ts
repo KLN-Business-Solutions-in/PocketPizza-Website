@@ -40,7 +40,7 @@ export async function apiFetch<T>(
   const { auth: _auth, ...rest } = init;
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || API_BASE;
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  const url = path.startsWith("http") ? path : `${baseUrl}${cleanPath}`;
+  const url = `${baseUrl}${cleanPath}`;
 
   let res: Response;
   try {

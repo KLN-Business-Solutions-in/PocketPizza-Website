@@ -3,13 +3,17 @@ import { ZodError } from 'zod';
 import { AppError } from '../utils/errors';
 import { sendError } from '../utils/response';
 import { createChildLogger } from '../utils/logger';
+import { env } from '../config/env';
 
 const logger = createChildLogger({ module: 'error-handler' });
 
-const PRISMA_ERROR_MAP: Record<string, { status: number; code: string }> = {
-  P2002: { status: 409, code: 'CONFLICT' },
-  P2025: { status: 404, code: 'NOT_FOUND' },
-  P2003: { status: 409, code: 'FOREIGN_KEY_VIOLATION' },
+const PRISMA_ERROR_MAP: Record<string, { status: number; code: string; message: string }> = {
+  P2002: { status: 409, code: 'CONFLICT', message: 'Conflict' },
+  P2025: { status: 404, code: 'NOT_FOUND', message: 'Resource not found' },
+  P2003: { status: 409, code: 'FOREIGN_KEY_VIOLATION', message: 'Conflict' },
+  // numeric overflow surfaces as P2020/P2010 depending on adapter — must not become a 500
+  P2020: { status: 400, code: 'VALIDATION_ERROR', message: 'Value out of range' },
+  P2010: { status: 400, code: 'VALIDATION_ERROR', message: 'Value out of range' },
 };
 
 // Contract schemas resolve root zod@4 while backend uses nested zod@3 —
@@ -43,18 +47,28 @@ export function errorHandler(
     return;
   }
 
+  const parserType = (err as { type?: string }).type;
+  if (parserType === 'entity.parse.failed') {
+    sendError(res, 'INVALID_JSON', 'Malformed JSON in request body', 400, undefined, requestId);
+    return;
+  }
+  if (parserType === 'entity.too.large') {
+    sendError(res, 'PAYLOAD_TOO_LARGE', 'Request body too large', 413, undefined, requestId);
+    return;
+  }
+
   if (err.name === 'PrismaClientKnownRequestError') {
     const prismaErr = err as unknown as { code: string; meta?: Record<string, unknown> };
     const mapped = PRISMA_ERROR_MAP[prismaErr.code];
     if (mapped) {
-      sendError(res, mapped.code, mapped.code === 'NOT_FOUND' ? 'Resource not found' : 'Conflict', mapped.status, undefined, requestId);
+      sendError(res, mapped.code, mapped.message, mapped.status, undefined, requestId);
       return;
     }
   }
 
   logger.error({ requestId, code: 'INTERNAL_ERROR', path: req.path, method: req.method }, 'Unhandled error');
 
-  const message = process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message;
+  const message = env.NODE_ENV === 'production' ? 'Internal server error' : err.message;
   sendError(res, 'INTERNAL_ERROR', message, 500, undefined, requestId);
 }
 

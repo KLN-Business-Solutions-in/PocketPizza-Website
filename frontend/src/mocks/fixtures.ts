@@ -117,6 +117,7 @@ export const MOCK_INVOICE: InvoiceResponse = {
   },
   items: [
     {
+      menuItemId: "prod-1",
       nameSnapshot: "Classic Margherita",
       variantSnapshot: 'Medium (12")',
       addOnSnapshot: [{ label: "Extra Cheese", price: "40.00" }],

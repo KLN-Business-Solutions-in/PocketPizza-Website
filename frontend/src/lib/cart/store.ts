@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { OrderType } from "@shared/contract/contract";
@@ -43,8 +44,6 @@ export type OrderTypeState = OrderType;
 type CartState = {
   lines: CartLine[];
   orderType: OrderTypeState;
-  /** False during SSR and the first client render, true once localStorage is read. */
-  hasHydrated: boolean;
   addLine: (line: CartLineDraft) => void;
   updateQty: (key: string, quantity: number) => void;
   removeLine: (key: string) => void;
@@ -57,7 +56,6 @@ type CartState = {
   evictInactive: (activeMenuItemIds: Iterable<string>) => CartLine[];
   clear: () => void;
   setOrderType: (t: OrderTypeState) => void;
-  totalQuantity: () => number;
 };
 
 export function lineKey(l: Pick<CartLineDraft, "menuItemId" | "variantId" | "addOnIds">): string {
@@ -138,7 +136,6 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       lines: [],
       orderType: "DELIVERY",
-      hasHydrated: false,
       addLine: (line) => {
         const draft: CartLineDraft = { ...line, addOnIds: line.addOnIds ?? [] };
         const key = lineKey(draft);
@@ -175,28 +172,39 @@ export const useCartStore = create<CartState>()(
       },
       clear: () => set({ lines: [] }),
       setOrderType: (t) => set({ orderType: t }),
-      totalQuantity: () => get().lines.reduce((n, l) => n + l.quantity, 0),
     }),
     {
       name: "pokket-cart",
       version: 2,
       partialize: (state) => ({ lines: state.lines, orderType: state.orderType }),
       migrate: migratePersistedCart,
-      onRehydrateStorage: () => () => {
-        // Runs on the client only, after localStorage has been read. partialize
-        // excludes hasHydrated, so it is never restored from storage — it only
-        // ever flips false → true here.
-        useCartStore.setState({ hasHydrated: true });
+      // Always validate on read: zustand's default merge spreads the raw parsed
+      // payload ({...current, ...persisted}), which would let a tampered
+      // localStorage overwrite store actions or inject unvalidated lines.
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as { lines?: unknown; orderType?: unknown };
+        const orderType: OrderTypeState =
+          p.orderType === "DELIVERY" || p.orderType === "PICKUP" || p.orderType === "DINE_IN"
+            ? p.orderType
+            : current.orderType;
+        return { ...current, lines: sanitizeLines(p.lines), orderType };
       },
     }
   )
 );
 
+/** Never changes: localStorage rehydration is synchronous at module init. */
+const subscribeHydrated = () => () => {};
+
 /**
- * True once localStorage has been read. Gate cart-derived UI on this so the
- * server-rendered markup and the first client render agree (no hydration
- * mismatch on the header badge).
+ * True after hydration, false during SSR. localStorage rehydration is
+ * synchronous, so the snapshot is simply "server: false, client: true" —
+ * useSyncExternalStore serves the server snapshot during hydration and flips
+ * to true right after, keeping the first client render identical to the
+ * server markup (no badge mismatch). Replaces an onRehydrateStorage flag that
+ * ran synchronously inside create() and hit the temporal dead zone of the
+ * useCartStore binding itself (ReferenceError → flag never set).
  */
 export function useCartHydrated(): boolean {
-  return useCartStore((s) => s.hasHydrated);
+  return React.useSyncExternalStore(subscribeHydrated, () => true, () => false);
 }

@@ -11,11 +11,11 @@ import type { ApiError } from "@/lib/api/client";
  *   items[2]: invalid variant for "Classic Margherita"
  *   items[3]: invalid add-on "a9" for "Garlic Butter Dough Balls"
  *
- * The contract's `QuoteItem` has NO `menuItemId`, and a rejected quote returns
- * no items at all — so the ONLY way to correlate a rejection to a cart line is
- * by array index into the request payload we sent. That is safe because the
- * server rejects the entire quote if any single line is bad, so a successful
- * response is always the full, in-order set.
+ * A rejected quote returns no items at all — `QuoteItem.menuItemId` only
+ * arrives with a successful response — so the ONLY way to correlate a rejection
+ * to a cart line is by array index into the request payload we sent. That is
+ * safe because the server rejects the entire quote if any single line is bad,
+ * so a successful response is always the full, in-order set.
  */
 
 export type QuoteIssue = {
