@@ -16,7 +16,6 @@ import {
   findOrderByToken,
   findQuoteItems,
   findRestaurantPricing,
-  nextOrderNumber,
   placeOrder,
 } from './order.repository';
 import { computeQuote } from './pricing.service';
@@ -115,14 +114,34 @@ type IdempotencyExisting = NonNullable<Awaited<ReturnType<typeof findOrderByIdem
 
 // The key alone is not a credential: it must resolve to *this* requester's
 // identical request, otherwise respond with a data-free 409.
+// Fingerprint covers variant + add-ons, not just menuItemId, so a replay with
+// the same key but a different configuration is rejected instead of silently
+// returning the original order.
+function fingerprintLine(
+  i: { menuItemId: string; variantSnapshot: string | null; quantity: number },
+  addOns: unknown,
+): string {
+  const labels = Array.isArray(addOns)
+    ? addOns
+        .map((a) => String((a as { label?: unknown })?.label ?? ''))
+        .sort()
+        .join('+')
+    : '';
+  return `${i.menuItemId}:${i.variantSnapshot ?? ''}:${labels}:${i.quantity}`;
+}
+
 function idempotencyMatches(
   existing: IdempotencyExisting,
-  expected: { phone: string; orderType: string; items: { menuItemId: string; quantity: number }[] },
+  expected: {
+    phone: string;
+    orderType: string;
+    items: { menuItemId: string; variantSnapshot: string | null; quantity: number; addOnSnapshot: unknown }[];
+  },
 ): boolean {
   if (existing.customer.phone !== expected.phone) return false;
   if (String(existing.orderType) !== expected.orderType) return false;
-  const a = existing.items.map((i) => `${i.menuItemId}:${i.quantity}`).sort();
-  const b = expected.items.map((i) => `${i.menuItemId}:${i.quantity}`).sort();
+  const a = existing.items.map((i) => fingerprintLine(i, i.addOnsSnapshot)).sort();
+  const b = expected.items.map((i) => fingerprintLine(i, i.addOnSnapshot)).sort();
   return a.length === b.length && a.every((v, i) => v === b[i]);
 }
 
@@ -200,7 +219,7 @@ export async function createOrder(input: CreateOrderRequest): Promise<{
     await expireOldIdempotencyKeys();
     const existing = await findOrderByIdempotencyKey(idempotencyKey);
     if (existing) {
-      if (!idempotencyMatches(existing, { phone, orderType: input.orderType, items: input.items })) {
+      if (!idempotencyMatches(existing, { phone, orderType: input.orderType, items: quote.items })) {
         throw new ConflictError('Request could not be processed');
       }
       return { data: toCreateResponse(existing), created: false };
@@ -222,7 +241,6 @@ export async function createOrder(input: CreateOrderRequest): Promise<{
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const order = await placeOrder({
-        orderNumber: await nextOrderNumber(),
         publicToken,
         idempotencyKey,
         restaurantId: restaurant.id,
@@ -242,7 +260,7 @@ export async function createOrder(input: CreateOrderRequest): Promise<{
         const existing = idempotencyKey ? await findOrderByIdempotencyKey(idempotencyKey) : null;
         if (existing) {
           if (
-            !idempotencyMatches(existing, { phone, orderType: input.orderType, items: input.items })
+            !idempotencyMatches(existing, { phone, orderType: input.orderType, items: quote.items })
           ) {
             throw new ConflictError('Request could not be processed');
           }
