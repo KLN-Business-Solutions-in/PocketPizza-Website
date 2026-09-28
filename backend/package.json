@@ -16,7 +16,7 @@
     "@pokket-pizza/contract": "0.0.1",
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
-    "argon2": "^0.31.0",
+    "argon2": "^0.45.1",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

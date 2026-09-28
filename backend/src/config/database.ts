@@ -18,13 +18,8 @@ function createPrismaClient(): PrismaClient {
 }
 
 export async function getPrisma(): Promise<PrismaClient> {
-  if (globalForPrisma.prisma) return globalForPrisma.prisma;
-
-  const client = createPrismaClient();
-
-  if (env.NODE_ENV !== 'production') {
-    globalForPrisma.prisma = client;
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = createPrismaClient();
   }
-
-  return client;
+  return globalForPrisma.prisma;
 }

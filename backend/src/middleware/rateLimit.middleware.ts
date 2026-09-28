@@ -25,7 +25,8 @@ export const loginRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => {
-    const email = (req.body?.email as string)?.toLowerCase().trim() ?? 'unknown';
+    const raw = req.body?.email;
+    const email = typeof raw === 'string' ? raw.toLowerCase().trim() : 'unknown';
     return `${req.ip}:${email}`;
   },
   handler: rateLimitBody('Too many login attempts'),
@@ -37,6 +38,14 @@ export const orderCreateRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: rateLimitBody('Too many order attempts'),
+});
+
+export const tokenLookupRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: rateLimitBody('Too many order lookup attempts'),
 });
 
 export const refreshRateLimit = rateLimit({

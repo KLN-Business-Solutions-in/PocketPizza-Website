@@ -7,12 +7,17 @@ import { MenuItemCard } from "@/components/menu/MenuItemCard";
 import { MenuSkeleton } from "@/components/menu/MenuSkeleton";
 import { ProductModal } from "@/components/menu/ProductModal";
 import { EmptyState, ErrorState } from "@/components/ui/LayoutPrimitives";
+import { useCartReconcile } from "@/hooks/useCartReconcile";
 import type { MenuItem } from "@shared/contract/contract";
 
 export function MenuContent() {
   const { categories, products, isLoading, isError, error, refetch } = useMenuFlat();
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
   const [selected, setSelected] = useState<MenuItem | null>(null);
+
+  // Day 4: if anything already in the cart went inactive, drop it and toast —
+  // the customer can be browsing the menu and find their cart changed under them.
+  useCartReconcile();
 
   const filteredProducts = useMemo(() => {
     if (selectedCategoryId === "all") return products;
@@ -79,7 +84,16 @@ export function MenuContent() {
         </div>
       </div>
 
-      <ProductModal product={selected} onClose={() => setSelected(null)} />
+      {/*
+        Keyed by product id so opening a different item remounts the modal and
+        its variant/add-on/quantity state resets naturally. Doing this with an
+        effect instead would cascade an extra render on every open.
+      */}
+      <ProductModal
+        key={selected?.id ?? "no-product"}
+        product={selected}
+        onClose={() => setSelected(null)}
+      />
     </div>
   );
 }

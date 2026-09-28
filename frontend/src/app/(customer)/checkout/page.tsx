@@ -1,119 +1,150 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCartStore } from "@/lib/cart/store";
-import { newIdempotencyKey, quotePayload, useCreateOrder, useQuote } from "@/lib/api/orders";
-import { normalizeIndianPhone } from "@/lib/phone";
-import { formatINR } from "@/lib/money";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import type { OrderType } from "@shared/contract/contract";
+
+import { useCartHydrated, useCartStore } from "@/lib/cart/store";
+import { newIdempotencyKey, quotePayload, useCreateOrder } from "@/lib/api/orders";
 import { ApiError } from "@/lib/api/client";
+import { formatINR } from "@/lib/money";
+import {
+  checkoutSchema,
+  toCreateOrderRequest,
+  type CheckoutInput,
+  type CheckoutValues,
+} from "@/lib/checkout/schema";
+import { parseQuoteRejections } from "@/lib/quote/rejections";
+import { useCartReconcile } from "@/hooks/useCartReconcile";
+import { useOrderQuote } from "@/hooks/useOrderQuote";
+
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
 import { Card, ErrorState } from "@/components/ui/LayoutPrimitives";
-import type { CreateOrderRequest, OrderType } from "@shared/contract/contract";
+import { OrderTypeSelector } from "@/components/cart/OrderTypeSelector";
+import { CartLineRow } from "@/components/cart/CartLineRow";
+import { NumericField, TextField } from "@/components/form/TextField";
+import { QuoteSummary } from "@/components/quote/QuoteSummary";
 
-const ORDER_TYPES: OrderType[] = ["DELIVERY", "PICKUP", "DINE_IN"];
-
+/**
+ * Day 5 + Day 6 checkout.
+ *
+ * Day 5 — the form is react-hook-form driven by the Zod schema in
+ * `src/lib/checkout/schema.ts`, which layers the two rules the sprint needs
+ * (10-digit Indian mobile, address required if and only if DELIVERY) on top of
+ * the FROZEN shared contract. Errors render inline per field and submit stays
+ * disabled while the form is invalid.
+ *
+ * Day 6 — every price on screen comes from POST /orders/quote; the client sends
+ * ids and quantities only. A rejected quote marks the offending line and blocks
+ * submission until the cart is fixed.
+ */
 export default function CheckoutPage() {
   const router = useRouter();
+  const hasHydrated = useCartHydrated();
   const lines = useCartStore((s) => s.lines);
   const orderType = useCartStore((s) => s.orderType);
   const setOrderType = useCartStore((s) => s.setOrderType);
+  const updateQty = useCartStore((s) => s.updateQty);
+  const removeLine = useCartStore((s) => s.removeLine);
   const clear = useCartStore((s) => s.clear);
 
-  const [name, setName] = React.useState("");
-  const [phone, setPhone] = React.useState("");
-  const [line1, setLine1] = React.useState("");
-  const [line2, setLine2] = React.useState("");
-  const [landmark, setLandmark] = React.useState("");
-  const [city, setCity] = React.useState("");
-  const [pincode, setPincode] = React.useState("");
-  const [notes, setNotes] = React.useState("");
-  const [formError, setFormError] = React.useState<string | null>(null);
-
-  const quote = useQuote();
+  useCartReconcile();
+  const quote = useOrderQuote();
   const createOrder = useCreateOrder();
-  // One idempotency key per checkout attempt (§19). Regenerated after success.
-  const idempotencyRef = React.useRef<string>(newIdempotencyKey());
 
-  React.useEffect(() => {
-    if (lines.length === 0 || quote.isPending || quote.isSuccess) return;
-    quote.mutate(quotePayload(orderType, lines));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lines.length, orderType]);
+  // One idempotency key per checkout attempt (§19). Held as state rather than
+  // a ref: it must survive repeated failed submits unchanged, and only be
+  // regenerated once the order actually succeeds.
+  const [idempotencyKey, setIdempotencyKey] = React.useState(newIdempotencyKey);
+  const [submitError, setSubmitError] = React.useState<string | null>(null);
 
-  const refreshQuote = () => {
-    setFormError(null);
-    quote.reset();
-    if (lines.length > 0) quote.mutate(quotePayload(orderType, lines));
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors, isValid, isSubmitting },
+  } = useForm<CheckoutInput, unknown, CheckoutValues>({
+    resolver: zodResolver(checkoutSchema),
+    mode: "onChange",
+    defaultValues: {
+      orderType,
+      customer: { name: "", phone: "" },
+      items: [],
+      notes: "",
+    },
+  });
+
+  const changeOrderType = (next: OrderType) => {
+    setOrderType(next);
+    setValue("orderType", next, { shouldValidate: true, shouldDirty: true });
+    setSubmitError(null);
   };
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError(null);
+  // `items` is required by the shared schema but is not a user input — it comes
+  // from the cart. Push it into the form whenever the cart changes so the
+  // resolver (and therefore isValid) always sees a complete payload.
+  // Reuses quotePayload so the form, the quote request and the create-order
+  // body are all built from one function.
+  const cartItems = React.useMemo(() => quotePayload(orderType, lines).items, [orderType, lines]);
+  const itemsSignature = React.useMemo(() => JSON.stringify(cartItems), [cartItems]);
 
+  React.useEffect(() => {
+    if (cartItems.length === 0) return;
+    setValue("items", cartItems, { shouldValidate: true });
+  }, [itemsSignature, cartItems, setValue]);
+
+  // The cart owns the order type (the cart page sets it too), so push the
+  // store's value into the form whenever it changes. Unidirectional — the form
+  // never writes back, so the two can never disagree.
+  React.useEffect(() => {
+    setValue("orderType", orderType, { shouldValidate: true });
+  }, [orderType, setValue]);
+
+  const submit = handleSubmit(async (values) => {
+    setSubmitError(null);
     if (lines.length === 0) {
-      setFormError("Your cart is empty.");
+      setSubmitError("Your cart is empty.");
       return;
     }
-    let normalizedPhone: string;
-    try {
-      normalizedPhone = normalizeIndianPhone(phone);
-    } catch (err) {
-      setFormError((err as Error).message);
+    // Day 6: never submit against an unresolved quote.
+    if (quote.isBlocked) {
+      setSubmitError("Fix the highlighted items in your cart before placing this order.");
       return;
     }
-    if (!name.trim()) {
-      setFormError("Please enter your name.");
-      return;
-    }
-    if (orderType === "DELIVERY" && (!line1.trim() || !city.trim() || !pincode.trim())) {
-      setFormError("Address line 1, city and pincode are required for delivery.");
+    if (!quote.data) {
+      setSubmitError("We could not confirm the price yet. Please wait a moment and try again.");
       return;
     }
 
-    const body: CreateOrderRequest = {
-      orderType,
-      items: lines.map((l) => ({
-        menuItemId: l.menuItemId,
-        variantId: l.variantId,
-        addOnIds: l.addOnIds ?? [],
-        quantity: l.quantity,
-      })),
-      customer: { name: name.trim(), phone: normalizedPhone },
-      ...(orderType === "DELIVERY"
-        ? {
-            address: {
-              line1: line1.trim(),
-              line2: line2.trim() || undefined,
-              landmark: landmark.trim() || undefined,
-              city: city.trim(),
-              pincode: pincode.trim(),
-            },
-          }
-        : {}),
-      ...(notes.trim() ? { notes: notes.trim() } : {}),
-      idempotencyKey: idempotencyRef.current,
-    };
-
     try {
+      const body = toCreateOrderRequest({
+        ...values,
+        items: cartItems,
+        idempotencyKey,
+      });
       const res = await createOrder.mutateAsync(body);
       clear();
-      idempotencyRef.current = newIdempotencyKey();
+      setIdempotencyKey(newIdempotencyKey());
       // Public lookup uses publicToken, never orderNumber (§11.5, §16.13).
       router.push(`/order/${res.publicToken}`);
     } catch (err) {
-      const api = err as ApiError;
-      if (api?.code === "ORDER_INVALID") {
-        const details = Array.isArray(api.details)
-          ? api.details.map((d: unknown) => (typeof d === "string" ? d : (d as { message?: string })?.message || "")).join(" ")
-          : "";
-        setFormError(`${api.message} ${details}`.trim());
-      } else {
-        setFormError(api?.message || "Failed to place order. Please try again.");
-      }
+      // Handles the backend's per-line `items[N]: …` details as well as plain
+      // 4xx/5xx messages.
+      const reasons = parseQuoteRejections(err).map((i) => i.reason);
+      setSubmitError(
+        err instanceof ApiError
+          ? reasons.join(" ") || err.message
+          : "Failed to place order. Please try again."
+      );
     }
-  };
+  });
+
+  if (!hasHydrated) {
+    return <p className="text-body text-bodySecondary">Loading your cart…</p>;
+  }
 
   if (lines.length === 0) {
     return (
@@ -122,109 +153,165 @@ export default function CheckoutPage() {
         <p className="mt-2 text-body text-bodySecondary">
           Your cart is empty. Add items from the menu first.
         </p>
+        <Link href="/menu" className="mt-4 inline-block">
+          <Button variant="outline">Browse the menu</Button>
+        </Link>
       </div>
     );
   }
+
+  const submitDisabled =
+    isSubmitting ||
+    createOrder.isPending ||
+    !isValid ||
+    quote.isPending ||
+    !quote.data ||
+    quote.isBlocked;
 
   return (
     <div className="space-y-6 pb-12">
       <h1 className="text-h2 font-heading font-bold">Checkout</h1>
 
-      <Card>
-        <label className="block text-label font-medium">Order type</label>
-        <div className="mt-2 flex gap-2">
-          {ORDER_TYPES.map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setOrderType(t)}
-              className={`rounded-full px-4 py-2 text-xs font-heading font-semibold ${
-                orderType === t ? "bg-brand-red text-white" : "bg-neutralTint text-charcoal"
-              }`}
-            >
-              {t.replace("_", " ")}
-            </button>
-          ))}
-        </div>
-      </Card>
-
-      <Card>
-        <div className="flex items-center justify-between">
-          <h2 className="font-heading font-bold">Price summary (from server)</h2>
-          <button onClick={refreshQuote} className="text-caption font-bold text-brand-red underline">
-            Refresh quote
-          </button>
-        </div>
-        {quote.isPending && <p className="mt-2 text-body text-bodySecondary">Calculating…</p>}
-        {quote.isError && (
-          <div className="mt-2">
-            <ErrorState
-              message={(quote.error as Error)?.message || "Quote failed."}
-              onRetry={refreshQuote}
-            />
-          </div>
-        )}
-        {quote.data && (
-          <dl className="mt-2 space-y-1 text-body">
-            <div className="flex justify-between">
-              <dt>Subtotal</dt>
-              <dd className="font-semibold">{formatINR(quote.data.subtotal)}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt>Delivery fee</dt>
-              <dd className="font-semibold">{formatINR(quote.data.deliveryFee)}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt>Tax</dt>
-              <dd className="font-semibold">{formatINR(quote.data.tax)}</dd>
-            </div>
-            <div className="flex justify-between border-t pt-2 font-heading font-extrabold">
-              <dt>Total</dt>
-              <dd>{formatINR(quote.data.total)}</dd>
-            </div>
-          </dl>
-        )}
-        <p className="mt-2 text-caption text-mutedGray">
-          Server recomputes all prices — the quote uses the same engine as order creation.
-        </p>
-      </Card>
-
-      <form onSubmit={submit} className="space-y-4">
-        <Card>
-          <h2 className="font-heading font-bold">Contact</h2>
-          <div className="mt-3 grid gap-3 md:grid-cols-2">
-            <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Anjali" required />
-            <Input label="Phone (10-digit Indian mobile)" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="9876543210" required />
-          </div>
-        </Card>
-
-        {orderType === "DELIVERY" && (
+      <div className="grid gap-6 lg:grid-cols-[1fr_360px] lg:items-start">
+        <form onSubmit={submit} noValidate className="space-y-4">
           <Card>
-            <h2 className="font-heading font-bold">Delivery address</h2>
+            <p className="mb-2 block text-label font-medium">Order type</p>
+            <OrderTypeSelector
+              value={orderType}
+              onChange={changeOrderType}
+              idPrefix="checkout-order-type"
+            />
+          </Card>
+
+          <Card>
+            <h2 className="font-heading font-bold">Your items</h2>
+            <ul className="mt-3 space-y-3">
+              {lines.map((l, i) => (
+                <CartLineRow
+                  key={l.key}
+                  line={l}
+                  index={i}
+                  onUpdateQty={updateQty}
+                  onRemove={(key) => {
+                    removeLine(key);
+                    setSubmitError(null);
+                  }}
+                  issue={quote.lineIssues.get(i)}
+                />
+              ))}
+            </ul>
+          </Card>
+
+          <Card>
+            <h2 className="font-heading font-bold">Contact</h2>
             <div className="mt-3 grid gap-3 md:grid-cols-2">
-              <Input label="Line 1 *" value={line1} onChange={(e) => setLine1(e.target.value)} placeholder="Flat 203" />
-              <Input label="Line 2" value={line2} onChange={(e) => setLine2(e.target.value)} placeholder="ABC Society" />
-              <Input label="Landmark" value={landmark} onChange={(e) => setLandmark(e.target.value)} placeholder="Near Park" />
-              <Input label="City *" value={city} onChange={(e) => setCity(e.target.value)} placeholder="Pune" />
-              <Input label="Pincode *" value={pincode} onChange={(e) => setPincode(e.target.value)} placeholder="411001" />
+              <TextField
+                label="Name"
+                autoComplete="name"
+                placeholder="Anjali"
+                error={errors.customer?.name?.message}
+                {...register("customer.name")}
+              />
+              <NumericField
+                label="Mobile number"
+                type="tel"
+                inputMode="numeric"
+                maxLength={15}
+                autoComplete="tel"
+                placeholder="9876543210"
+                hint="10-digit Indian mobile number"
+                error={errors.customer?.phone?.message}
+                {...register("customer.phone")}
+              />
             </div>
           </Card>
-        )}
 
-        <Card>
-          <h2 className="font-heading font-bold">Notes (optional)</h2>
-          <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Less spicy" maxLength={500} />
-        </Card>
+          {orderType === "DELIVERY" && (
+            <Card>
+              <h2 className="font-heading font-bold">Delivery address</h2>
+              {errors.address?.message && (
+                <p role="alert" className="mt-2 text-caption text-brand-red">
+                  {errors.address.message}
+                </p>
+              )}
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                <TextField
+                  label="Address line 1"
+                  autoComplete="address-line1"
+                  placeholder="Flat 203, Sai Residency"
+                  error={errors.address?.line1?.message}
+                  {...register("address.line1")}
+                />
+                <TextField
+                  label="Address line 2"
+                  autoComplete="address-line2"
+                  placeholder="ABC Society"
+                  error={errors.address?.line2?.message}
+                  {...register("address.line2")}
+                />
+                <TextField
+                  label="Landmark"
+                  placeholder="Near Park"
+                  error={errors.address?.landmark?.message}
+                  {...register("address.landmark")}
+                />
+                <TextField
+                  label="City"
+                  autoComplete="address-level2"
+                  placeholder="Pune"
+                  error={errors.address?.city?.message}
+                  {...register("address.city")}
+                />
+                <NumericField
+                  label="Pincode"
+                  inputMode="numeric"
+                  maxLength={6}
+                  autoComplete="postal-code"
+                  placeholder="411001"
+                  error={errors.address?.pincode?.message}
+                  {...register("address.pincode")}
+                />
+              </div>
+            </Card>
+          )}
 
-        {formError && <ErrorState message={formError} />}
+          <Card>
+            <h2 className="font-heading font-bold">Anything else?</h2>
+            <div className="mt-3">
+              <TextField
+                label="Order notes (optional)"
+                placeholder="Less spicy, extra napkins"
+                maxLength={500}
+                error={errors.notes?.message}
+                {...register("notes")}
+              />
+            </div>
+          </Card>
 
-        <Button type="submit" size="lg" className="w-full" isLoading={createOrder.isPending}>
-          Place Order · {quote.data ? formatINR(quote.data.total) : "—"}
-        </Button>
-        <p className="text-caption text-mutedGray">
-          Pay at store. WhatsApp confirmation follows — its failure never cancels your order.
-        </p>
-      </form>
+          {submitError && <ErrorState message={submitError} />}
+
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full"
+            disabled={submitDisabled}
+            isLoading={isSubmitting || createOrder.isPending}
+          >
+            {quote.isBlocked
+              ? "Fix your cart to continue"
+              : quote.data
+                ? `Place Order · ${formatINR(quote.data.total)}`
+                : "Place Order"}
+          </Button>
+          <p className="text-caption text-mutedGray">
+            Pay at store. WhatsApp confirmation follows — its failure never cancels your order.
+          </p>
+        </form>
+
+        <div className="lg:sticky lg:top-20">
+          <QuoteSummary quote={quote} orderType={orderType} />
+        </div>
+      </div>
     </div>
   );
 }

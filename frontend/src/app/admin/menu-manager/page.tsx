@@ -48,7 +48,7 @@ export default function MenuManagerPage() {
       setFormError("Name and category are required.");
       return;
     }
-    if (!/^\d+(\.\d{1,2})?$/.test(basePrice)) {
+    if (!/^\d{1,10}(\.\d{1,2})?$/.test(basePrice)) {
       setFormError('Base price must be a decimal string like "299.00".');
       return;
     }
@@ -164,7 +164,7 @@ function ProductRow({
 
   const save = async () => {
     setErr(null);
-    if (!/^\d+(\.\d{1,2})?$/.test(price)) {
+    if (!/^\d{1,10}(\.\d{1,2})?$/.test(price)) {
       setErr('Price must look like "299.00".');
       return;
     }
