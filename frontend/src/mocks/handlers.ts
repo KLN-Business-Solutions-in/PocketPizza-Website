@@ -1,6 +1,8 @@
 import { http, HttpResponse } from "msw";
+import type { OrderStatus } from "@shared/contract/contract";
 import {
   MOCK_ADMIN_ORDER,
+  MOCK_ADMIN_ORDERS,
   MOCK_CATEGORIES,
   MOCK_CREATE_ORDER,
   MOCK_INVOICE,
@@ -89,6 +91,23 @@ function priceQuote(lines: QuoteLine[], orderType: string) {
   };
 }
 
+function hasAuthSession(cookies: Record<string, string>, request: Request): boolean {
+  const cookieHeader = request.headers.get("cookie") || "";
+  // Check for cookies set by the real backend or our previous mock implementation
+  return Boolean(
+    cookies["__Host-admin_access"] ||
+    cookies["admin_session"] ||
+    cookies["admin_refresh"] ||
+    cookieHeader.includes("admin_access") ||
+    cookieHeader.includes("admin_session") ||
+    cookieHeader.includes("admin_refresh")
+  );
+}
+
+// Auth handlers (auth/login, auth/refresh, auth/logout) are intentionally
+// NOT mocked — they bypass MSW and hit the real backend at localhost:4000.
+// MSW onUnhandledRequest:"bypass" routes them through automatically.
+
 export const handlers = [
   // ---- Public menu ----
   http.get(`${API}/menu`, () => ok({ categories: MOCK_CATEGORIES })),
@@ -152,30 +171,38 @@ export const handlers = [
     return ok({ ...MOCK_ORDER, publicToken: String(params.publicToken) });
   }),
 
-  // ---- Auth (cookie-based, no token in body) ----
-  http.post(`${API}/auth/login`, async ({ request }) => {
-    const body = (await request.json()) as { email?: string; password?: string };
-    if (body.email === "admin@pokketpizza.com" && (body.password || "").length >= 8) {
-      return ok({
-        admin: { id: "a1", name: "Pokket Admin", email: "admin@pokketpizza.com", role: "OWNER" },
-      });
+  // auth/login, auth/refresh, auth/logout → bypassed to real backend (no handler here)
+
+  // ---- Admin orders (mocked — real backend endpoint not yet built) ----
+  http.get(`${API}/admin/orders`, ({ request }) => {
+    const url = new URL(request.url);
+    const statusParam = url.searchParams.get("status");
+    const typeParam = url.searchParams.get("type");
+    let list = [...MOCK_ADMIN_ORDERS];
+    if (statusParam) {
+      list = list.filter((o) => o.status === statusParam);
     }
-    return fail("AUTHENTICATION_INVALID", "Invalid email or password.", 401);
+    if (typeParam) {
+      list = list.filter((o) => o.orderType === typeParam);
+    }
+    return ok(list);
   }),
-
-  http.post(`${API}/auth/refresh`, () => ok({ admin: { id: "a1", name: "Pokket Admin", email: "admin@pokketpizza.com", role: "OWNER" } })),
-  http.post(`${API}/auth/logout`, () => ok({})),
-
-  // ---- Admin orders ----
-  http.get(`${API}/admin/orders`, () => ok([MOCK_ADMIN_ORDER])),
-  http.get(`${API}/admin/orders/:id`, () => ok(MOCK_ADMIN_ORDER)),
-  http.patch(`${API}/admin/orders/:id/status`, async ({ request }) => {
-    const body = (await request.json()) as { status?: string };
-    const allowed = ["NEW", "CONFIRMED", "PREPARING", "READY", "OUT_FOR_DELIVERY", "COMPLETED", "CANCELLED"];
+  http.get(`${API}/admin/orders/:id`, ({ params }) => {
+    const found = MOCK_ADMIN_ORDERS.find((o) => o.id === params.id) ?? MOCK_ADMIN_ORDERS[0];
+    return ok(found);
+  }),
+  http.patch(`${API}/admin/orders/:id/status`, async ({ request, params }) => {
+    const body = (await request.json()) as { status?: OrderStatus };
+    const allowed: OrderStatus[] = ["NEW", "CONFIRMED", "PREPARING", "READY", "OUT_FOR_DELIVERY", "COMPLETED", "CANCELLED"];
     if (!body.status || !allowed.includes(body.status)) {
       return fail("ORDER_INVALID_TRANSITION", "Invalid status transition.", 400);
     }
-    return ok({ ...MOCK_ADMIN_ORDER, status: body.status });
+    const order = MOCK_ADMIN_ORDERS.find((o) => o.id === params.id);
+    if (order && body.status) {
+      order.status = body.status;
+    }
+    const result = order ?? { ...MOCK_ADMIN_ORDERS[0], status: body.status };
+    return ok(result);
   }),
 
   // ---- Admin menu (soft toggle only, no DELETE) ----

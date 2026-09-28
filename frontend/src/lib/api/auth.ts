@@ -49,18 +49,45 @@ export function useAdminLogout() {
 /**
  * Lightweight session probe: admin-only endpoint. 401 → not logged in.
  * Uses GET /api/v1/admin/orders?pageSize=1 as the guard (no dedicated /me in MVP).
+ *
+ * IMPORTANT: Only a genuine 401 AUTHENTICATION_REQUIRED signals "not logged in."
+ * A 404 (endpoint not yet built on backend), 500, or network error must NOT
+ * redirect to login — those are backend/infra issues, not auth failures.
+ *
+ * MOCK MODE: When NEXT_PUBLIC_USE_MOCKS=true, the session probe is skipped
+ * entirely — MSW module-level state resets on Next.js navigations, making
+ * cookie/session simulation unreliable. Route protection in mock mode is
+ * intentionally relaxed; real cookie enforcement happens on the live backend.
  */
 export function useAdminSession() {
+  const isMockMode = process.env.NEXT_PUBLIC_USE_MOCKS === "true";
+
   return useQuery({
     queryKey: ["admin", "session"],
     queryFn: async (): Promise<{ ok: boolean }> => {
+      // In mock mode: skip the probe — always report session as active.
+      // MSW cannot reliably read the real backend's cross-origin HttpOnly
+      // cookies, so route protection must be relaxed in mock mode.
+      if (isMockMode) {
+        return { ok: true };
+      }
+
       try {
         await apiFetch("/admin/orders?page=1&pageSize=1");
         return { ok: true };
       } catch (e: unknown) {
-        const err = e as { status?: number };
-        if (err?.status === 401) return { ok: false };
-        throw e;
+        const err = e as { status?: number; code?: string };
+        // Only treat a real 401 AUTHENTICATION_REQUIRED as "not logged in".
+        // 404 = backend endpoint not built yet → treat as ok (don't redirect).
+        // 500/network = infra error → treat as ok (don't redirect).
+        if (
+          err?.status === 401 &&
+          (err?.code === "AUTHENTICATION_REQUIRED" || err?.code === "AUTHENTICATION_INVALID")
+        ) {
+          return { ok: false };
+        }
+        // Any other error: resolve as ok:true so dashboard renders its own error state.
+        return { ok: true };
       }
     },
     retry: false,

@@ -11,18 +11,15 @@ import {
 } from "@/lib/api/admin";
 import { useAdminLogout, useAdminSession } from "@/lib/api/auth";
 import { formatINR } from "@/lib/money";
-import { ApiError } from "@/lib/api/client";
+import { apiFetch, ApiError } from "@/lib/api/client";
 import { Button } from "@/components/ui/Button";
 import { Card, ErrorState } from "@/components/ui/LayoutPrimitives";
+import { KanbanBoard, KanbanOrder } from "@/components/admin/KanbanBoard";
 import type { OrderStatus, OrderType } from "@shared/contract/contract";
 
 /**
  * Admin dashboard — Backend Master Reference §11.7–11.9, §14, §17.
- * - List: status/dateFrom/dateTo/type filters, page/pageSize (max 100)
- * - Detail: KOT view + status history
- * - Status PATCH: hardcoded allow-list; READY→OUT_FOR_DELIVERY only for
- *   DELIVERY, READY→COMPLETED only when not DELIVERY.
- * Cross-restaurant IDs surface as 404 (never trust client restaurantId, §20.10).
+ * Kanban Board across 7 statuses: NEW, CONFIRMED, PREPARING, READY, OUT_FOR_DELIVERY, COMPLETED, CANCELLED.
  */
 
 const STATUSES: (OrderStatus | "")[] = [
@@ -45,18 +42,18 @@ export default function AdminDashboardPage() {
   const session = useAdminSession();
   const logout = useAdminLogout();
 
-  const [status, setStatus] = React.useState<OrderStatus | undefined>(undefined);
-  const [type, setType] = React.useState<OrderType | undefined>(undefined);
-  const [page, setPage] = React.useState(1);
+  const [statusFilter, setStatusFilter] = React.useState<OrderStatus | undefined>(undefined);
+  const [typeFilter, setTypeFilter] = React.useState<OrderType | undefined>(undefined);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [reportFrom] = React.useState(() => today());
   const [reportTo] = React.useState(() => today());
 
-  const orders = useAdminOrders({ status, type, page, pageSize: 20 });
+  const orders = useAdminOrders({ status: statusFilter, type: typeFilter, page: 1, pageSize: 100 });
   const detail = useAdminOrderDetail(selectedId ?? undefined);
   const updateStatus = useUpdateOrderStatus(selectedId ?? "");
   const report = useReportSummary(reportFrom, reportTo, session.data?.ok === true);
   const [statusError, setStatusError] = React.useState<string | null>(null);
+  const [isUpdating, setIsUpdating] = React.useState(false);
 
   React.useEffect(() => {
     if (session.data?.ok === false) router.replace("/admin/login");
@@ -65,13 +62,33 @@ export default function AdminDashboardPage() {
   if (session.isLoading) return <p className="py-12 text-body">Checking session…</p>;
   if (session.data?.ok === false) return null;
 
-  const list: { id: string; orderNumber: string; status: OrderStatus; orderType: OrderType; total: string; customer: { name: string; phone: string }; createdAt: string }[] =
-    Array.isArray(orders.data) ? orders.data : (orders.data as { items?: typeof list })?.items ?? [];
+  const list: KanbanOrder[] = Array.isArray(orders.data)
+    ? (orders.data as KanbanOrder[])
+    : ((orders.data as { items?: KanbanOrder[] })?.items ?? []);
+
+  const handleUpdateStatus = async (id: string, nextStatus: OrderStatus) => {
+    setStatusError(null);
+    setIsUpdating(true);
+    try {
+      await apiFetch(`/admin/orders/${id}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      await orders.refetch();
+      if (selectedId === id) {
+        await detail.refetch();
+      }
+    } catch (err) {
+      const api = err as ApiError;
+      setStatusError(api?.message || "Status update failed.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const doTransition = async (next: OrderStatus) => {
     setStatusError(null);
     if (!selectedId || !detail.data) return;
-    // Client-side guard mirrors §17 (server still enforces).
     if (!ALLOWED_TRANSITIONS[detail.data.status].includes(next)) {
       setStatusError(`Transition ${detail.data.status} → ${next} is not allowed.`);
       return;
@@ -86,6 +103,7 @@ export default function AdminDashboardPage() {
     }
     try {
       await updateStatus.mutateAsync({ status: next });
+      await orders.refetch();
     } catch (err) {
       const api = err as ApiError;
       setStatusError(api?.message || "Status update failed.");
@@ -95,7 +113,10 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6 pb-12">
       <div className="flex items-center justify-between">
-        <h1 className="text-h2 font-heading font-bold">Admin Dashboard</h1>
+        <div>
+          <h1 className="text-h2 font-heading font-bold">Admin Dashboard</h1>
+          <p className="text-caption text-gray-500">Live order queue and status workflow</p>
+        </div>
         <Button
           variant="outline"
           size="sm"
@@ -124,12 +145,14 @@ export default function AdminDashboardPage() {
         </Card>
       )}
 
-      <Card>
-        <div className="flex flex-wrap gap-2">
+      {/* Filters Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-xl border shadow-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Filters:</span>
           <select
-            value={status ?? ""}
-            onChange={(e) => { setStatus((e.target.value || undefined) as OrderStatus | undefined); setPage(1); }}
-            className="rounded-md border px-3 py-2 text-body"
+            value={statusFilter ?? ""}
+            onChange={(e) => setStatusFilter((e.target.value || undefined) as OrderStatus | undefined)}
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-red/20"
             aria-label="Filter by status"
           >
             {STATUSES.map((s) => (
@@ -137,9 +160,9 @@ export default function AdminDashboardPage() {
             ))}
           </select>
           <select
-            value={type ?? ""}
-            onChange={(e) => { setType((e.target.value || undefined) as OrderType | undefined); setPage(1); }}
-            className="rounded-md border px-3 py-2 text-body"
+            value={typeFilter ?? ""}
+            onChange={(e) => setTypeFilter((e.target.value || undefined) as OrderType | undefined)}
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-red/20"
             aria-label="Filter by type"
           >
             <option value="">All types</option>
@@ -148,61 +171,78 @@ export default function AdminDashboardPage() {
             <option value="DINE_IN">DINE_IN</option>
           </select>
         </div>
-
-        {orders.isError && (
-          <div className="mt-3">
-            <ErrorState message="Failed to load orders." onRetry={() => orders.refetch()} />
-          </div>
-        )}
-        <ul className="mt-3 divide-y">
-          {list.map((o) => (
-            <li key={o.id}>
-              <button
-                onClick={() => setSelectedId(o.id)}
-                className={`flex w-full items-center justify-between py-2 text-left text-body hover:text-brand-red ${selectedId === o.id ? "font-bold text-brand-red" : ""}`}
-              >
-                <span>{o.orderNumber} · {o.customer.name} · {o.status}</span>
-                <span className="font-semibold">{formatINR(o.total)}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-        {list.length === 0 && !orders.isLoading && (
-          <p className="mt-2 text-body text-bodySecondary">No orders for these filters.</p>
-        )}
-        <div className="mt-3 flex gap-2">
-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-            Prev
-          </Button>
-          <span className="px-2 py-1 text-body">Page {page}</span>
-          <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)}>
-            Next
-          </Button>
+        <div className="text-xs text-gray-500 font-medium">
+          Total orders: <strong className="text-gray-900">{list.length}</strong>
         </div>
-      </Card>
+      </div>
 
+      {statusError && <ErrorState message={statusError} />}
+
+      {orders.isError && (
+        <ErrorState message="Failed to load orders." onRetry={() => orders.refetch()} />
+      )}
+
+      {/* 7-Column Kanban Board */}
+      <KanbanBoard
+        orders={list}
+        selectedId={selectedId}
+        onSelectOrder={setSelectedId}
+        onUpdateStatus={handleUpdateStatus}
+        isUpdating={isUpdating}
+      />
+
+      {/* KOT Detail Drawer/Card */}
       {selectedId && (
-        <Card>
-          <h2 className="font-heading font-bold">KOT detail</h2>
-          {detail.isLoading && <p className="text-body">Loading…</p>}
+        <Card className="border-l-4 border-l-brand-red">
+          <div className="flex items-center justify-between pb-2 border-b">
+            <h2 className="font-heading font-bold text-lg">KOT Detail</h2>
+            <Button variant="ghost" size="sm" onClick={() => setSelectedId(null)}>
+              Close
+            </Button>
+          </div>
+          {detail.isLoading && <p className="text-body py-4">Loading order details…</p>}
           {detail.isError && <ErrorState message="Failed to load order detail." onRetry={() => detail.refetch()} />}
           {detail.data && (
-            <div className="mt-2 space-y-2 text-body">
-              <p>
-                {detail.data.orderNumber} · {detail.data.orderType} · {detail.data.status}
+            <div className="mt-4 space-y-3 text-body">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="font-bold text-gray-900 text-lg">{detail.data.orderNumber}</span>
+                  <span className="ml-2 inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
+                    {detail.data.orderType}
+                  </span>
+                </div>
+                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-brand-red/10 text-brand-red">
+                  {detail.data.status}
+                </span>
+              </div>
+              <p className="text-bodySecondary text-sm">
+                Customer: <strong className="text-gray-800">{detail.data.customer.name}</strong> ({detail.data.customer.phone})
               </p>
-              <p className="text-bodySecondary">
-                {detail.data.customer.name} · {detail.data.customer.phone}
-              </p>
-              <ul className="list-disc pl-5">
-                {detail.data.items.map((it, i) => (
-                  <li key={i}>
-                    {it.quantity}× {it.nameSnapshot}
-                    {it.variantSnapshot ? ` (${it.variantSnapshot})` : ""}
-                  </li>
-                ))}
-              </ul>
-              <p className="font-bold">Total {formatINR(detail.data.total)}</p>
+              {detail.data.notes && (
+                <p className="text-xs bg-amber-50 text-amber-900 p-2 rounded border border-amber-200">
+                  Notes: {detail.data.notes}
+                </p>
+              )}
+              <div className="border-t border-b py-2 space-y-1">
+                <p className="text-xs font-bold text-gray-500 uppercase">Items</p>
+                <ul className="list-disc pl-5 space-y-1 text-sm">
+                  {detail.data.items.map((it, i) => (
+                    <li key={i}>
+                      <span className="font-semibold">{it.quantity}×</span> {it.nameSnapshot}
+                      {it.variantSnapshot ? ` (${it.variantSnapshot})` : ""}
+                      {it.addOnSnapshot && it.addOnSnapshot.length > 0 && (
+                        <span className="text-xs text-gray-500">
+                          {" "}+ {it.addOnSnapshot.map((a) => a.label).join(", ")}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="flex items-center justify-between font-bold text-base">
+                <span>Total Amount:</span>
+                <span>{formatINR(detail.data.total)}</span>
+              </div>
               <div className="flex flex-wrap gap-2 pt-2">
                 {ALLOWED_TRANSITIONS[detail.data.status].map((next) => (
                   <Button key={next} size="sm" onClick={() => doTransition(next)} isLoading={updateStatus.isPending}>
@@ -210,7 +250,6 @@ export default function AdminDashboardPage() {
                   </Button>
                 ))}
               </div>
-              {statusError && <ErrorState message={statusError} />}
             </div>
           )}
         </Card>
@@ -218,3 +257,4 @@ export default function AdminDashboardPage() {
     </div>
   );
 }
+
