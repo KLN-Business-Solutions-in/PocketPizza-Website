@@ -11,8 +11,21 @@ import type { OrderType } from "@shared/contract/contract";
  * all pricing — client totals are discarded (§16.2).
  */
 
-/** Upper bound on a single cart line. Applied everywhere quantity is edited. */
+/**
+ * Upper bound on a single cart line.
+ *
+ * The contract's own ceiling is 99 (`quoteItemSchema.quantity`, contract.ts:93).
+ * 20 is deliberately tighter — a tighter client cap can only ever prevent a
+ * server rejection, never cause one. Kept in one place so the modal and the
+ * cart page cannot drift apart.
+ */
 export const MAX_LINE_QUANTITY = 20;
+
+/** Contract cap on `quoteRequestSchema.items` — 50 line items per order. */
+export const MAX_CART_LINES = 50;
+
+/** Contract cap on `quoteItemSchema.addOnIds` — 20 add-ons on a single line. */
+export const MAX_LINE_ADDONS = 20;
 
 export type CartLine = {
   /** Stable client-side line id (menuItemId + variant + addOns hash). */
@@ -39,12 +52,19 @@ export type CartLine = {
 /** What the caller supplies; the store derives `key`. */
 export type CartLineDraft = Omit<CartLine, "key">;
 
+/**
+ * `addLine` refuses rather than silently dropping, so the caller can tell the
+ * customer why. The only current refusal is a full cart (contract cap, 50).
+ */
+export type AddLineResult = { ok: true } | { ok: false; reason: "cart-full"; limit: number };
+
+
 export type OrderTypeState = OrderType;
 
 type CartState = {
   lines: CartLine[];
   orderType: OrderTypeState;
-  addLine: (line: CartLineDraft) => void;
+  addLine: (line: CartLineDraft) => AddLineResult;
   updateQty: (key: string, quantity: number) => void;
   removeLine: (key: string) => void;
   /**
@@ -90,9 +110,14 @@ function sanitizeLines(value: unknown): CartLine[] {
   if (!Array.isArray(value)) return [];
   const seen = new Set<string>();
   const out: CartLine[] = [];
-  for (const raw of value) {
+  // A hand-edited or stale localStorage payload can hold more lines or more
+  // add-ons than the contract allows. Trim here so the cart can never be
+  // un-quotable for a reason the customer did not cause.
+  for (const raw of value.slice(0, MAX_CART_LINES)) {
     if (!isRenderableLine(raw)) continue;
-    const addOnIds = raw.addOnIds.filter((id): id is string => typeof id === "string");
+    const addOnIds = raw.addOnIds
+      .filter((id): id is string => typeof id === "string")
+      .slice(0, MAX_LINE_ADDONS);
     const draft: CartLineDraft = {
       menuItemId: raw.menuItemId,
       variantId: typeof raw.variantId === "string" ? raw.variantId : undefined,
@@ -137,19 +162,29 @@ export const useCartStore = create<CartState>()(
       lines: [],
       orderType: "DELIVERY",
       addLine: (line) => {
-        const draft: CartLineDraft = { ...line, addOnIds: line.addOnIds ?? [] };
+        const current = get().lines;
+        const draft: CartLineDraft = {
+          ...line,
+          addOnIds: (line.addOnIds ?? []).slice(0, MAX_LINE_ADDONS),
+        };
         const key = lineKey(draft);
         const quantity = clampQuantity(draft.quantity);
-        const existing = get().lines.find((l) => l.key === key);
+        const existing = current.find((l) => l.key === key);
         if (existing) {
           set({
-            lines: get().lines.map((l) =>
+            lines: current.map((l) =>
               l.key === key ? { ...l, quantity: clampQuantity(l.quantity + quantity) } : l
             ),
           });
-        } else {
-          set({ lines: [...get().lines, { ...draft, quantity, key }] });
+          return { ok: true };
         }
+        // Refuse a genuinely new line past the contract cap rather than letting
+        // the customer build a cart that is guaranteed to 400 at quote time.
+        if (current.length >= MAX_CART_LINES) {
+          return { ok: false, reason: "cart-full", limit: MAX_CART_LINES };
+        }
+        set({ lines: [...current, { ...draft, quantity, key }] });
+        return { ok: true };
       },
       updateQty: (key, quantity) => {
         if (quantity <= 0) {

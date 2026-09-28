@@ -2,12 +2,12 @@ import { http, HttpResponse } from "msw";
 import {
   MOCK_ADMIN_ORDER,
   MOCK_CATEGORIES,
-  MOCK_CREATE_ORDER,
   MOCK_INVOICE,
   MOCK_ORDER,
   MOCK_PRODUCTS,
   MOCK_QUOTE,
 } from "./fixtures";
+import { findOrder, placeOrder, seedOrder, validateCreateOrder } from "./orderStore";
 
 /**
  * MSW handlers mirror Backend Master Reference §15 endpoint reference.
@@ -139,38 +139,43 @@ export const handlers = [
   }),
 
   http.post(`${API}/orders`, async ({ request }) => {
-    const body = (await request.json()) as {
-      orderType?: string;
-      items?: QuoteLine[];
-      customer?: { name?: string; phone?: string };
-      address?: unknown;
-    };
-    if (!body.orderType || !body.items?.length) {
-      return fail("VALIDATION_ERROR", "orderType and items are required.", 400);
+    const body: unknown = await request.json();
+    // Day 6/7: validate against the shared contract, exactly as the backend
+    // does, so the frontend's rejection parser is exercised against real Zod
+    // issue paths (`items.0.quantity: …`) rather than only the hand-written
+    // `items[0]: …` dialect the pricing pass emits.
+    const validated = validateCreateOrder(body);
+    if (!validated.ok) {
+      return fail("VALIDATION_ERROR", "Validation failed", 400, validated.details);
     }
-    if (!body.customer?.name || !body.customer?.phone) {
-      return fail("VALIDATION_ERROR", "Customer name and phone are required.", 400);
-    }
-    if (body.orderType === "DELIVERY" && !body.address) {
-      return fail("VALIDATION_ERROR", "Delivery address is required for DELIVERY orders.", 400);
-    }
+    const parsed = validated.value;
     try {
-      const q = priceQuote(body.items, body.orderType);
-      return ok(
-        { ...MOCK_CREATE_ORDER, subtotal: q.subtotal, deliveryFee: q.deliveryFee, tax: q.tax, total: q.total },
-        201
-      );
+      const q = priceQuote(parsed.items, parsed.orderType);
+      return ok(placeOrder(parsed, q).created, 201);
     } catch (e: unknown) {
       const details = e instanceof QuoteRejection ? [e.reason] : [];
       return fail("VALIDATION_ERROR", "Order rejected", 400, details);
     }
   }),
 
-  http.get(`${API}/orders/:publicToken/invoice`, () => ok(MOCK_INVOICE)),
+  http.get(`${API}/orders/:publicToken/invoice`, ({ params }) => {
+    const token = String(params.publicToken);
+    // A real order placed in this session wins, so opening the invoice for the
+    // order you just placed shows YOUR order.
+    const found = findOrder(token);
+    if (found) return ok(found.invoice);
+    // Only the seeded demo token falls back to the fixture. Any other unknown
+    // token is a 404, not a silent echo of someone else's order.
+    if (token === MOCK_ORDER.publicToken) return ok(MOCK_INVOICE);
+    return fail("NOT_FOUND", "Invoice not found.", 404);
+  }),
 
   http.get(`${API}/orders/:publicToken`, ({ params }) => {
-    if (params.publicToken === MOCK_ORDER.publicToken) return ok(MOCK_ORDER);
-    return ok({ ...MOCK_ORDER, publicToken: String(params.publicToken) });
+    const token = String(params.publicToken);
+    const found = findOrder(token);
+    if (found) return ok(found.status);
+    if (token === MOCK_ORDER.publicToken) return ok(MOCK_ORDER);
+    return fail("NOT_FOUND", "Order not found.", 404);
   }),
 
   // ---- Auth (cookie-based, no token in body) ----
@@ -227,3 +232,8 @@ export const handlers = [
   // Silence unused-var lint for the static quote fixture (kept for reference).
   http.get(`${API}/__quote-fixture`, () => ok(MOCK_QUOTE)),
 ];
+
+// The demo order page is linked from the home page, so it needs an order to
+// exist before anyone has checked out. Everything placed during the session is
+// layered on top of this one.
+seedOrder(MOCK_ORDER.publicToken, { status: MOCK_ORDER, invoice: MOCK_INVOICE });

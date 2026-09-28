@@ -32,12 +32,15 @@ export class ApiError extends Error {
  * - Parses shared error envelope ({ success: false, error: { code, message, details }, requestId }).
  * - Logs requestId to console on any error response for debugging.
  * - Uses shared request/response types from @shared/contract/contract.
+ *
+ * There is deliberately no `auth` option. The API authenticates with an
+ * httpOnly cookie and `credentials: "include"` is sent unconditionally, so an
+ * opt-in flag would have been a lie — and the flag that used to sit in the
+ * signature was never passed by a single caller. Callers that want to signal an
+ * admin request should be able to do it by being explicit, not by flipping a
+ * parameter that did nothing.
  */
-export async function apiFetch<T>(
-  path: string,
-  init: RequestInit & { auth?: boolean } = {}
-): Promise<T> {
-  const { auth: _auth, ...rest } = init;
+export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || API_BASE;
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   const url = `${baseUrl}${cleanPath}`;
@@ -45,11 +48,11 @@ export async function apiFetch<T>(
   let res: Response;
   try {
     res = await fetch(url, {
-      ...rest,
+      ...init,
       credentials: "include",
       headers: {
         "Content-Type": "application/json",
-        ...(rest.headers || {}),
+        ...(init.headers || {}),
       },
     });
   } catch (networkErr: unknown) {

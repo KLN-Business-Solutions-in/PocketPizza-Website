@@ -16,6 +16,21 @@ import type { ApiError } from "@/lib/api/client";
  * to a cart line is by array index into the request payload we sent. That is
  * safe because the server rejects the entire quote if any single line is bad,
  * so a successful response is always the full, in-order set.
+ *
+ * TWO index dialects reach this parser, and both must map to the same cart
+ * line or the offending row is never marked:
+ *
+ *   items[0]: "Fiery Pepperoni" is no longer available   ← cart resolver
+ *   items.0.quantity: must be between 1 and 99           ← Zod, via
+ *                                                            error.middleware.ts,
+ *                                                            which joins the
+ *                                                            issue path with "."
+ *
+ * The second form arrives whenever a *contract limit* is breached rather than a
+ * per-line resolution failure: `items` max 50, `addOnIds` max 20, `quantity`
+ * 1…99 (contract.ts:88-98). Non-item paths (`customer.phone:`,
+ * `address.pincode:`) deliberately stay index -1 — they are not line problems
+ * and must read as a banner, not mark an arbitrary line.
  */
 
 export type QuoteIssue = {
@@ -27,11 +42,17 @@ export type QuoteIssue = {
   kind: "inactive" | "invalid-variant" | "invalid-add-on" | "unknown";
 };
 
-const INDEX_RE = /^items\[(\d+)\]/;
+/**
+ * `items[0]: …` (cart resolver) or `items.0.…` / `items.0` (Zod issue path).
+ * The trailing guard stops `items.0x` and `items[0]x` from parsing as index 0.
+ * Capture group 1 = bracket dialect, group 2 = dotted dialect.
+ */
+const INDEX_RE = /^items(?:\[(\d+)\]|\.(\d+))(?![\w-])/;
 
 export function parseQuoteIssue(detail: string): QuoteIssue {
   const match = INDEX_RE.exec(detail.trim());
-  const index = match ? Number(match[1]) : -1;
+  const parsed = match ? Number(match[1] ?? match[2]) : Number.NaN;
+  const index = Number.isInteger(parsed) ? parsed : -1;
   const lower = detail.toLowerCase();
   let kind: QuoteIssue["kind"] = "unknown";
   if (lower.includes("no longer available") || lower.includes("not found")) {
