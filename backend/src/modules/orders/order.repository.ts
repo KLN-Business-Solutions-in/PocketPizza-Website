@@ -27,15 +27,7 @@ function istDayWindowUtc(day: string): { gte: Date; lt: Date } {
   return { gte: startUtc, lt: new Date(startUtc.getTime() + 24 * 60 * 60 * 1000) };
 }
 
-export async function nextOrderNumber(): Promise<string> {
-  const prisma = await getPrisma();
-  const day = istDay();
-  const count = await prisma.order.count({ where: { createdAt: istDayWindowUtc(day) } });
-  return `ORD-${day.replace(/-/g, '')}-${String(count + 1).padStart(3, '0')}`;
-}
-
 export type PlaceOrderInput = {
-  orderNumber: string;
   publicToken: string;
   idempotencyKey: string | null;
   restaurantId: string;
@@ -60,50 +52,64 @@ export type PlaceOrderInput = {
 
 export async function placeOrder(input: PlaceOrderInput) {
   const prisma = await getPrisma();
-  return prisma.$transaction(async (tx) => {
-    const customer = await tx.customer.upsert({
-      where: { phone: input.customer.phone },
-      // first writer wins: unauthenticated orders must not overwrite stored names
-      update: {},
-      create: {
-        restaurantId: input.restaurantId,
-        name: input.customer.name,
-        phone: input.customer.phone,
-      },
-    });
-    const order = await tx.order.create({
-      data: {
-        orderNumber: input.orderNumber,
-        publicToken: input.publicToken,
-        idempotencyKey: input.idempotencyKey,
-        restaurantId: input.restaurantId,
-        customerId: customer.id,
-        orderType: input.orderType,
-        deliveryAddress: input.deliveryAddress,
-        notes: input.notes,
-        subtotal: input.subtotal,
-        deliveryFee: input.deliveryFee,
-        tax: input.tax,
-        total: input.total,
-        items: {
-          create: input.items.map((i) => ({
-            menuItemId: i.menuItemId,
-            nameSnapshot: i.nameSnapshot,
-            variantSnapshot: i.variantSnapshot,
-            addOnsSnapshot: i.addOnSnapshot,
-            quantity: i.quantity,
-            unitPrice: i.unitPrice,
-            lineTotal: i.lineTotal,
-          })),
+  return prisma.$transaction(
+    async (tx) => {
+      // count+1 is only race-free under a lock: advisory xact lock serializes
+      // allocation for the day and auto-releases on commit/rollback.
+      // The void-returning lock call must be projected away — Prisma cannot
+      // deserialize a void column, hence the `SELECT 1 FROM (...)`.
+      const day = istDay();
+      await tx.$queryRaw`SELECT 1 FROM (SELECT pg_advisory_xact_lock(hashtext(${`order-number:${day}`}))) AS lock_taken`;
+      const count = await tx.order.count({ where: { createdAt: istDayWindowUtc(day) } });
+      const orderNumber = `ORD-${day.replace(/-/g, '')}-${String(count + 1).padStart(3, '0')}`;
+
+      const customer = await tx.customer.upsert({
+        where: { phone: input.customer.phone },
+        // first writer wins: unauthenticated orders must not overwrite stored names
+        update: {},
+        create: {
+          restaurantId: input.restaurantId,
+          name: input.customer.name,
+          phone: input.customer.phone,
         },
-      },
-      include: { items: true },
-    });
-    await tx.orderStatusHistory.create({
-      data: { orderId: order.id, oldStatus: 'NEW', newStatus: 'NEW', changedBy: 'system' },
-    });
-    return order;
-  });
+      });
+      const order = await tx.order.create({
+        data: {
+          orderNumber,
+          publicToken: input.publicToken,
+          idempotencyKey: input.idempotencyKey,
+          restaurantId: input.restaurantId,
+          customerId: customer.id,
+          orderType: input.orderType,
+          deliveryAddress: input.deliveryAddress,
+          notes: input.notes,
+          subtotal: input.subtotal,
+          deliveryFee: input.deliveryFee,
+          tax: input.tax,
+          total: input.total,
+          items: {
+            create: input.items.map((i) => ({
+              menuItemId: i.menuItemId,
+              nameSnapshot: i.nameSnapshot,
+              variantSnapshot: i.variantSnapshot,
+              addOnsSnapshot: i.addOnSnapshot,
+              quantity: i.quantity,
+              unitPrice: i.unitPrice,
+              lineTotal: i.lineTotal,
+            })),
+          },
+        },
+        include: { items: true },
+      });
+      await tx.orderStatusHistory.create({
+        data: { orderId: order.id, oldStatus: 'NEW', newStatus: 'NEW', changedBy: 'system' },
+      });
+      return order;
+    },
+    // remote DB (~400ms per statement) + advisory-lock serialization under
+    // concurrent bursts outlasts Prisma's 5s default → P2028
+    { maxWait: 10_000, timeout: 30_000 },
+  );
 }
 
 export async function findOrderByIdempotencyKey(key: string) {
@@ -111,7 +117,9 @@ export async function findOrderByIdempotencyKey(key: string) {
   return prisma.order.findUnique({
     where: { idempotencyKey: key },
     include: {
-      items: { select: { menuItemId: true, quantity: true } },
+      items: {
+        select: { menuItemId: true, quantity: true, variantSnapshot: true, addOnsSnapshot: true },
+      },
       customer: { select: { phone: true } },
     },
   });
