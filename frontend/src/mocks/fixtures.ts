@@ -168,6 +168,7 @@ export const MOCK_ADMIN_ORDERS: AdminOrderDetail[] = [
     notes: "Less spicy, extra napkins please",
     items: [
       {
+        menuItemId: "prod-1",
         nameSnapshot: "Classic Margherita",
         variantSnapshot: 'Medium (12")',
         addOnSnapshot: [{ label: "Extra Cheese", price: "40.00" }],
@@ -193,6 +194,7 @@ export const MOCK_ADMIN_ORDERS: AdminOrderDetail[] = [
     notes: "Pack carefully",
     items: [
       {
+        menuItemId: "prod-2",
         nameSnapshot: "Fiery Pepperoni",
         variantSnapshot: 'Small (8")',
         addOnSnapshot: [],
@@ -218,6 +220,7 @@ export const MOCK_ADMIN_ORDERS: AdminOrderDetail[] = [
     notes: "Table 4",
     items: [
       {
+        menuItemId: "prod-2",
         nameSnapshot: "Fiery Pepperoni",
         variantSnapshot: 'Medium (12")',
         addOnSnapshot: [],
@@ -243,6 +246,7 @@ export const MOCK_ADMIN_ORDERS: AdminOrderDetail[] = [
     notes: "Ring doorbell twice",
     items: [
       {
+        menuItemId: "prod-1",
         nameSnapshot: "Classic Margherita",
         variantSnapshot: 'Large (14")',
         addOnSnapshot: [],
@@ -251,6 +255,7 @@ export const MOCK_ADMIN_ORDERS: AdminOrderDetail[] = [
         lineTotal: "499.00",
       },
       {
+        menuItemId: "prod-6",
         nameSnapshot: "Garlic Butter Dough Balls",
         variantSnapshot: null,
         addOnSnapshot: [],
@@ -276,6 +281,7 @@ export const MOCK_ADMIN_ORDERS: AdminOrderDetail[] = [
     notes: "Call on arrival",
     items: [
       {
+        menuItemId: "prod-1",
         nameSnapshot: "Classic Margherita",
         variantSnapshot: 'Medium (12")',
         addOnSnapshot: [],
@@ -301,6 +307,7 @@ export const MOCK_ADMIN_ORDERS: AdminOrderDetail[] = [
     notes: null,
     items: [
       {
+        menuItemId: "prod-1",
         nameSnapshot: "Classic Margherita",
         variantSnapshot: 'Small (8")',
         addOnSnapshot: [],
@@ -326,6 +333,7 @@ export const MOCK_ADMIN_ORDERS: AdminOrderDetail[] = [
     notes: "Customer cancelled",
     items: [
       {
+        menuItemId: "prod-2",
         nameSnapshot: "Fiery Pepperoni",
         variantSnapshot: 'Small (8")',
         addOnSnapshot: [],
