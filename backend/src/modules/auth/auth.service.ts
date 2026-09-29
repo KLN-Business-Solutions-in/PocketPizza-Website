@@ -1,12 +1,13 @@
 import argon2 from 'argon2';
-import { SignJWT } from 'jose';
+import { SignJWT, jwtVerify } from 'jose';
 import { randomUUID } from 'crypto';
 import { env } from '../../config/env';
-import { AuthInvalidError, RateLimitError } from '../../utils/errors';
+import { AuthError, AuthInvalidError, RateLimitError } from '../../utils/errors';
 import { createChildLogger } from '../../utils/logger';
-import { findAdminByEmail } from './auth.repository';
+import { findAdminByEmail, findAdminById } from './auth.repository';
 import {
   ACCESS_TOKEN_TYP,
+  REFRESH_TOKEN_TYP,
   type AdminRow,
   type LoginResponse,
 } from './auth.types';
@@ -91,13 +92,70 @@ async function signAccessToken(admin: AdminRow): Promise<string> {
     .sign(secret);
 }
 
+async function signRefreshToken(admin: AdminRow): Promise<string> {
+  const secret = new TextEncoder().encode(env.JWT_SECRET);
+
+  return new SignJWT({ typ: REFRESH_TOKEN_TYP })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setSubject(admin.id)
+    .setIssuer(env.JWT_ISSUER)
+    .setAudience(env.JWT_AUDIENCE)
+    .setIssuedAt()
+    .setExpirationTime(`${env.REFRESH_TOKEN_TTL_DAYS}d`)
+    .setJti(randomUUID())
+    .sign(secret);
+}
+
+type SessionResponse = {
+  accessToken: string;
+  refreshToken: string;
+  admin: LoginResponse['admin'];
+};
+
+function toLoginAdmin(admin: AdminRow): LoginResponse['admin'] {
+  return {
+    id: admin.id,
+    name: admin.name,
+    email: admin.email,
+    role: admin.role,
+  };
+}
+
+export async function refreshSession(refreshToken: string): Promise<SessionResponse> {
+  const secret = new TextEncoder().encode(env.JWT_SECRET);
+  let sub: unknown;
+  try {
+    const { payload } = await jwtVerify(refreshToken, secret, {
+      algorithms: ['HS256'],
+      issuer: env.JWT_ISSUER,
+      audience: env.JWT_AUDIENCE,
+    });
+    if (payload.typ !== REFRESH_TOKEN_TYP) throw new Error('wrong typ');
+    sub = payload.sub;
+  } catch {
+    throw new AuthError();
+  }
+  if (typeof sub !== 'string') throw new AuthError();
+
+  // re-load: role/restaurant changes and deletions take effect immediately
+  const admin = await findAdminById(sub);
+  if (!admin) throw new AuthError();
+
+  // stateless rotation: every refresh issues a brand-new jti pair
+  return {
+    accessToken: await signAccessToken(admin),
+    refreshToken: await signRefreshToken(admin),
+    admin: toLoginAdmin(admin),
+  };
+}
+
 export async function login(
   input: {
     email: string;
     password: string;
   },
   ip: string,
-): Promise<{ accessToken: string; admin: LoginResponse['admin'] }> {
+): Promise<SessionResponse> {
   const email = input.email.toLowerCase().trim();
   assertNotLocked(ip, email);
   const admin = await findAdminByEmail(email);
@@ -115,15 +173,10 @@ export async function login(
   }
 
   loginFailures.delete(lockKey(ip, email));
-  const accessToken = await signAccessToken(admin);
 
   return {
-    accessToken,
-    admin: {
-      id: admin.id,
-      name: admin.name,
-      email: admin.email,
-      role: admin.role,
-    },
+    accessToken: await signAccessToken(admin),
+    refreshToken: await signRefreshToken(admin),
+    admin: toLoginAdmin(admin),
   };
 }
