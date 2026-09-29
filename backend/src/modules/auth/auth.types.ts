@@ -1,7 +1,9 @@
 import type { LoginRequest, LoginResponse } from '@pokket-pizza/contract/contract';
 
 export const COOKIE_ADMIN_ACCESS = '__Host-admin_access';
+export const COOKIE_ADMIN_REFRESH = '__Host-admin_refresh';
 export const ACCESS_TOKEN_TYP = 'admin-access';
+export const REFRESH_TOKEN_TYP = 'admin-refresh';
 
 export type AuthPrincipal = {
   id: string;
