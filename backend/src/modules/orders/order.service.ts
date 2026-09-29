@@ -1,23 +1,33 @@
 import type {
+  AdminOrderDetail,
+  AdminOrderListQuery,
+  AdminOrderSummary,
   CreateOrderRequest,
   CreateOrderResponse,
   InvoiceResponse,
   OrderStatusResponse,
   QuoteRequest,
   QuoteResponse,
+  UpdateStatusRequest,
 } from '@pokket-pizza/contract/contract';
+import { createChildLogger } from '../../utils/logger';
 import { randomBytes } from 'crypto';
 import { AppError, ConflictError, NotFoundError, ValidationError } from '../../utils/errors';
 import { normalizeIndianPhone } from '../../utils/phone';
 import { toFixed2 } from '../../utils/decimal';
 import {
   expireOldIdempotencyKeys,
+  findAdminOrderDetail,
+  findAdminOrders,
   findOrderByIdempotencyKey,
   findOrderByToken,
   findQuoteItems,
   findRestaurantPricing,
   placeOrder,
+  updateOrderStatusTx,
 } from './order.repository';
+
+const logger = createChildLogger({ module: 'orders' });
 import { computeQuote } from './pricing.service';
 import type { ResolvedQuoteLine } from './order.types';
 
@@ -275,7 +285,7 @@ export async function createOrder(input: CreateOrderRequest): Promise<{
   throw new AppError('CONFLICT', 'Could not allocate order number, please retry', 409);
 }
 
-function mapItems(row: OrderRow) {
+function mapItems(row: { items: OrderRow['items'] }) {
   return row.items.map((it) => ({
     menuItemId: it.menuItemId,
     nameSnapshot: it.nameSnapshot,
@@ -351,4 +361,80 @@ export async function getInvoice(publicToken: string): Promise<InvoiceResponse> 
     paymentMethod: row.paymentMethod,
     createdAt: row.createdAt.toISOString(),
   };
+}
+
+type AdminOrderDetailRow = NonNullable<Awaited<ReturnType<typeof findAdminOrderDetail>>>;
+
+function toAdminSummary(
+  row: Pick<
+    AdminOrderDetailRow,
+    'id' | 'orderNumber' | 'orderType' | 'status' | 'total' | 'createdAt' | 'items'
+  > & { customer: { name: string; phone: string } },
+): AdminOrderSummary {
+  return {
+    id: row.id,
+    orderNumber: row.orderNumber,
+    customer: { name: row.customer.name, phone: row.customer.phone },
+    orderType: row.orderType,
+    status: row.status,
+    items: mapItems(row),
+    total: toFixed2(row.total.toString()),
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+function toAdminDetail(row: AdminOrderDetailRow): AdminOrderDetail {
+  return {
+    ...toAdminSummary(row),
+    address: parseStoredAddress(row.deliveryAddress),
+    notes: row.notes,
+    statusHistory: row.statusHistory.map((h) => ({
+      oldStatus: h.oldStatus,
+      newStatus: h.newStatus,
+      changedBy: h.changedBy,
+      changedAt: h.changedAt.toISOString(),
+    })),
+    subtotal: toFixed2(row.subtotal.toString()),
+    deliveryFee: toFixed2(row.deliveryFee.toString()),
+    tax: toFixed2(row.tax.toString()),
+  };
+}
+
+export async function listAdminOrders(
+  query: AdminOrderListQuery,
+  restaurantId: string,
+): Promise<AdminOrderSummary[]> {
+  const rows = await findAdminOrders(restaurantId, query);
+  return rows.map((row) => toAdminSummary(row));
+}
+
+export async function getAdminOrderDetail(
+  id: string,
+  restaurantId: string,
+): Promise<AdminOrderDetail> {
+  const row = await findAdminOrderDetail(id, restaurantId);
+  if (!row) throw new AppError('ORDER_NOT_FOUND', 'Order not found', 404);
+  return toAdminDetail(row);
+}
+
+export async function updateAdminOrderStatus(
+  id: string,
+  body: UpdateStatusRequest,
+  restaurantId: string,
+  changedBy: string,
+): Promise<AdminOrderDetail> {
+  await updateOrderStatusTx({
+    orderId: id,
+    restaurantId,
+    nextStatus: body.status,
+    changedBy,
+  });
+  // reason is intentionally logged, not stored — no reason column exists (frozen schema)
+  if (body.reason !== undefined) {
+    logger.info(
+      { orderId: id, nextStatus: body.status, changedBy, reason: body.reason },
+      'admin order status change reason',
+    );
+  }
+  return getAdminOrderDetail(id, restaurantId);
 }
