@@ -3,12 +3,20 @@
 import { useParams } from "next/navigation";
 import { useInvoice } from "@/lib/api/orders";
 import { formatINR } from "@/lib/money";
+import { formatOrderTimestamp, orderTypeLabel, statusLabel } from "@/lib/order/status";
 import { Card, ErrorState } from "@/components/ui/LayoutPrimitives";
 import { MenuSkeleton } from "@/components/menu/MenuSkeleton";
 
 /**
  * Customer invoice — Backend Master Reference §11.6.
  * GET /api/v1/orders/:publicToken/invoice
+ *
+ * Unlike the order status page, the invoice response does carry the customer,
+ * address and paymentMethod, so this screen needs a single request.
+ *
+ * Printable: the print rules live in `app/globals.css` under `@media print`, and
+ * the screen-only "Print invoice" button is marked `print:hidden` so it does not
+ * print itself.
  */
 export default function OrderInvoicePage() {
   const params = useParams<{ publicToken: string }>();
@@ -25,19 +33,21 @@ export default function OrderInvoicePage() {
   }
   const inv = invoice.data;
   if (!inv) return null;
+  const isDelivery = inv.orderType === "DELIVERY";
 
   return (
     <div className="space-y-6 pb-12">
       <div>
         <h1 className="text-h2 font-heading font-bold">Invoice</h1>
         <p className="text-body text-bodySecondary">
-          Order {inv.orderNumber} · {new Date(inv.createdAt).toLocaleString("en-IN")}
+          Order {inv.orderNumber} · {orderTypeLabel(inv.orderType)} ·{" "}
+          {formatOrderTimestamp(inv.createdAt)}
         </p>
       </div>
       <Card>
         <p className="font-heading font-bold">{inv.customer.name}</p>
         <p className="text-body text-bodySecondary">{inv.customer.phone}</p>
-        {inv.address && (
+        {isDelivery && inv.address && (
           <p className="mt-1 text-body text-bodySecondary">
             {inv.address.line1}
             {inv.address.line2 ? `, ${inv.address.line2}` : ""}
@@ -80,10 +90,15 @@ export default function OrderInvoicePage() {
             <dt>Subtotal</dt>
             <dd>{formatINR(inv.subtotal)}</dd>
           </div>
-          <div className="flex justify-between">
-            <dt>Delivery</dt>
-            <dd>{formatINR(inv.deliveryFee)}</dd>
-          </div>
+          {/* The server returns "0.00" for non-delivery orders. Printing that as
+              a "Delivery ₹0.00" line on a pickup receipt reads as a missing
+              charge, not as "not applicable". */}
+          {isDelivery && (
+            <div className="flex justify-between">
+              <dt>Delivery fee</dt>
+              <dd>{formatINR(inv.deliveryFee)}</dd>
+            </div>
+          )}
           <div className="flex justify-between">
             <dt>Tax</dt>
             <dd>{formatINR(inv.tax)}</dd>
@@ -93,11 +108,18 @@ export default function OrderInvoicePage() {
             <dd>{formatINR(inv.total)}</dd>
           </div>
         </dl>
+        {/* Raw enum values ("PAY_AT_STORE", "OUT_FOR_DELIVERY") are database
+            vocabulary. This is a customer receipt. */}
         <p className="mt-2 text-caption text-mutedGray">
-          Payment: {inv.paymentMethod} · Status: {inv.status}
+          Payment: {inv.paymentMethod === "PAY_AT_STORE" ? "Pay at store" : inv.paymentMethod} ·
+          Status: {statusLabel(inv.status)}
         </p>
       </Card>
-      <button onClick={() => window.print()} className="underline text-brand-red text-body">
+      <button
+        type="button"
+        onClick={() => window.print()}
+        className="print:hidden underline text-brand-red text-body"
+      >
         Print invoice
       </button>
     </div>
