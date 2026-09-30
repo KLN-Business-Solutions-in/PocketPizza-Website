@@ -221,7 +221,18 @@ export async function updateOrderStatusTx(input: {
         `Transition from ${order.status} to ${input.nextStatus} is not permitted.`,
       );
     }
-    await tx.order.update({ where: { id: order.id }, data: { status: input.nextStatus } });
+    // optimistic guard: conditional on the status we validated, so a
+    // concurrent writer that changed it first makes this a no-op (0 rows)
+    const res = await tx.order.updateMany({
+      where: { id: order.id, status: order.status },
+      data: { status: input.nextStatus },
+    });
+    if (res.count === 0) {
+      throw new BusinessRuleError(
+        'ORDER_INVALID_TRANSITION',
+        'Order status changed concurrently; reload and retry.',
+      );
+    }
     await tx.orderStatusHistory.create({
       data: {
         orderId: order.id,
