@@ -14,4 +14,4 @@ export const authRouter = Router();
 
 authRouter.post('/login', loginRateLimit, ah(loginController));
 authRouter.post('/refresh', refreshRateLimit, ah(refreshController));
-authRouter.post('/logout', logoutController);
+authRouter.post('/logout', ah(logoutController));

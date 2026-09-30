@@ -32,6 +32,25 @@ export type AccessTokenClaims = {
   exp?: number;
 };
 
+export type RefreshTokenClaims = {
+  sub: string;
+  iss: string;
+  aud: string;
+  typ: typeof REFRESH_TOKEN_TYP;
+  jti: string;
+  iat?: number;
+  exp?: number;
+};
+
+export type RefreshTokenRow = {
+  jti: string;
+  familyId: string;
+  adminId: string;
+  usedAt: Date | null;
+  revokedAt: Date | null;
+  expiresAt: Date;
+};
+
 export type { LoginRequest, LoginResponse };
 
 declare global {

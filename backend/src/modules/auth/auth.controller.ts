@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { loginSchema } from './auth.validation';
-import { login, refreshSession } from './auth.service';
+import { login, refreshSession, revokeSessionBestEffort } from './auth.service';
 import {
   COOKIE_ADMIN_ACCESS,
   COOKIE_ADMIN_REFRESH,
@@ -44,7 +44,12 @@ export async function refreshController(req: Request, res: Response): Promise<vo
   sendSuccess<LoginResponse>(res, { admin });
 }
 
-export function logoutController(_req: Request, res: Response): void {
+export async function logoutController(req: Request, res: Response): Promise<void> {
+  const refreshToken = req.cookies?.[COOKIE_ADMIN_REFRESH];
+  if (typeof refreshToken === 'string' && refreshToken.length > 0) {
+    await revokeSessionBestEffort(refreshToken);
+  }
+
   res.clearCookie(COOKIE_ADMIN_ACCESS, COOKIE_OPTS);
   res.clearCookie(COOKIE_ADMIN_REFRESH, COOKIE_OPTS);
 
