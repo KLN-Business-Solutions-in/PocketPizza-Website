@@ -5,12 +5,14 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAdminLogout, useAdminSession } from "@/lib/api/auth";
 import { Button } from "@/components/ui/Button";
+import { useToast } from "@/components/ui/ToastProvider";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const logout = useAdminLogout();
   const session = useAdminSession();
+  const toast = useToast();
 
   React.useEffect(() => {
     if (pathname !== "/admin/login" && session.data?.ok === false) {
@@ -26,11 +28,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const handleLogout = async () => {
     try {
       await logout.mutateAsync();
+      // Hard redirect to ensure all local state/cache is fully wiped
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.href = "/admin/login";
     } catch (e) {
       console.error("Logout error:", e);
-    } finally {
-      // Hard redirect to ensure all local state/cache is fully wiped
-      window.location.href = "/admin/login";
+      toast.push("Logout failed. Please try again.", "error");
     }
   };
 
