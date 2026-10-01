@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { sendSuccess } from '../../utils/response';
 import { menuAdminRouter } from '../menu/menu.routes';
+import { orderAdminRouter } from '../orders/order.routes';
+import { reportAdminRouter } from '../reports/reports.routes';
 
 export const adminRouter = Router();
 
@@ -12,3 +14,5 @@ adminRouter.get('/ping', (req, res) => {
 });
 
 adminRouter.use(menuAdminRouter);
+adminRouter.use(orderAdminRouter);
+adminRouter.use(reportAdminRouter);

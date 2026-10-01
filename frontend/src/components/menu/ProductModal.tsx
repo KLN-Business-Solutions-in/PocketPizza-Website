@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
 import { formatINR, multiplyMoney } from "@/lib/money";
 import { addOnLabels, resolveSelection, variantLabel } from "@/lib/cart/indicative";
-import { MAX_LINE_QUANTITY, useCartStore } from "@/lib/cart/store";
+import { MAX_LINE_ADDONS, MAX_LINE_QUANTITY, useCartStore } from "@/lib/cart/store";
 
 /**
  * Day 4 variant + add-on picker. Writes a CartLine to the localStorage cart
@@ -38,8 +38,19 @@ export function ProductModal({
 
   if (!product) return null;
 
-  const toggleAddon = (id: string) =>
-    setAddOnIds((prev) => (prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]));
+  const toggleAddon = (id: string) => {
+    setAddOnIds((prev) => {
+      if (prev.includes(id)) return prev.filter((a) => a !== id);
+      // Contract caps addOnIds at 20 per line. A menu will not realistically
+      // offer that many, but a hand-edited payload could, and an unchecked box
+      // beats a server rejection at checkout.
+      if (prev.length >= MAX_LINE_ADDONS) {
+        push(`You can add at most ${MAX_LINE_ADDONS} extras to one item.`, "info");
+        return prev;
+      }
+      return [...prev, id];
+    });
+  };
 
   const selection = { variantId, addOnIds };
   const { unitPrice } = resolveSelection(product, selection);
@@ -48,7 +59,7 @@ export function ProductModal({
   const submit = () => {
     const vLabel = variantLabel(product, variantId);
     const aLabels = addOnLabels(product, addOnIds);
-    addLine({
+    const result = addLine({
       menuItemId: product.id,
       variantId,
       addOnIds,
@@ -58,6 +69,15 @@ export function ProductModal({
       variantLabel: vLabel,
       addOnLabels: aLabels,
     });
+    if (!result.ok) {
+      // Keep the modal open so the customer can drop an extra rather than lose
+      // the configuration they just built.
+      push(
+        `Your cart already has the maximum of ${result.limit} items. Remove one to add this.`,
+        "error"
+      );
+      return;
+    }
     push(
       qty > 1 ? `${qty} × ${product.name} added to your cart.` : `${product.name} added to your cart.`
     );

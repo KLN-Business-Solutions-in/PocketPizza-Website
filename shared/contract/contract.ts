@@ -314,6 +314,7 @@ export type AdminOrderSummary = {
   };
   orderType: OrderType;
   status: OrderStatus;
+  items: InvoiceItem[];
   /** @decimal "828.00" */
   total: string;
   createdAt: string;

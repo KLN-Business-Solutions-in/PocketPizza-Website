@@ -1,7 +1,9 @@
 import type { LoginRequest, LoginResponse } from '@pokket-pizza/contract/contract';
 
 export const COOKIE_ADMIN_ACCESS = '__Host-admin_access';
+export const COOKIE_ADMIN_REFRESH = '__Host-admin_refresh';
 export const ACCESS_TOKEN_TYP = 'admin-access';
+export const REFRESH_TOKEN_TYP = 'admin-refresh';
 
 export type AuthPrincipal = {
   id: string;
@@ -28,6 +30,25 @@ export type AccessTokenClaims = {
   jti: string;
   iat?: number;
   exp?: number;
+};
+
+export type RefreshTokenClaims = {
+  sub: string;
+  iss: string;
+  aud: string;
+  typ: typeof REFRESH_TOKEN_TYP;
+  jti: string;
+  iat?: number;
+  exp?: number;
+};
+
+export type RefreshTokenRow = {
+  jti: string;
+  familyId: string;
+  adminId: string;
+  usedAt: Date | null;
+  revokedAt: Date | null;
+  expiresAt: Date;
 };
 
 export type { LoginRequest, LoginResponse };

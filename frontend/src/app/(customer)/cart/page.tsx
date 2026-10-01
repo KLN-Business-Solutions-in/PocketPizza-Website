@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMenuFlat } from "@/lib/api/useMenu";
-import { useCartHydrated, useCartStore } from "@/lib/cart/store";
+import { useCartHydrated, useCartStore, MAX_CART_LINES } from "@/lib/cart/store";
 import { formatINR, fromPaise, toPaise } from "@/lib/money";
 import { useCartReconcile } from "@/hooks/useCartReconcile";
 import { Button } from "@/components/ui/Button";
@@ -93,6 +93,12 @@ export default function CartPage() {
           Indicative only. Delivery fee and tax are added by the server at checkout, which is the
           price you actually pay.
         </p>
+        {lines.length >= MAX_CART_LINES && (
+          <p role="status" className="mt-2 text-caption font-medium text-brand-red">
+            This is the maximum number of separate items we can order in one order. Remove a line to
+            add another.
+          </p>
+        )}
       </Card>
 
       <Link href="/checkout">
