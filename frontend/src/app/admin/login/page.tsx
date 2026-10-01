@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAdminLogin } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { Button } from "@/components/ui/Button";
@@ -15,6 +15,7 @@ import { Card, ErrorState } from "@/components/ui/LayoutPrimitives";
  */
 export default function AdminLoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const login = useAdminLogin();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -29,7 +30,10 @@ export default function AdminLoginPage() {
         email: email.trim().toLowerCase(),
         password,
       });
-      router.push("/admin/dashboard");
+      const redirectTo = searchParams.get("redirectTo");
+      router.push(
+        redirectTo?.startsWith("/admin") ? redirectTo : "/admin/dashboard"
+      );
     } catch (err) {
       const api = err as ApiError;
       if (api?.status === 429) {

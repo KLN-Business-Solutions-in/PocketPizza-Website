@@ -25,6 +25,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return <>{children}</>;
   }
 
+  if (session.isLoading || session.data?.ok === false) {
+    return <p className="p-6 text-body text-bodySecondary">Checking your sessionâ€¦</p>;
+  }
+
   const handleLogout = async () => {
     try {
       await logout.mutateAsync();

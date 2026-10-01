@@ -214,21 +214,34 @@ export const handlers = [
     return ok(list);
   }),
   http.get(`${API}/admin/orders/:id`, ({ params }) => {
-    const found = MOCK_ADMIN_ORDERS.find((o) => o.id === params.id) ?? MOCK_ADMIN_ORDERS[0];
+    const found = MOCK_ADMIN_ORDERS.find((o) => o.id === params.id);
+    if (!found) return fail("NOT_FOUND", "Order not found.", 404);
     return ok(found);
   }),
   http.patch(`${API}/admin/orders/:id/status`, async ({ request, params }) => {
     const body = (await request.json()) as { status?: OrderStatus };
-    const allowed: OrderStatus[] = ["NEW", "CONFIRMED", "PREPARING", "READY", "OUT_FOR_DELIVERY", "COMPLETED", "CANCELLED"];
+    const order = MOCK_ADMIN_ORDERS.find((o) => o.id === params.id);
+    if (!order) return fail("NOT_FOUND", "Order not found.", 404);
+
+    const allowed: OrderStatus[] =
+      order.status === "NEW"
+        ? ["CONFIRMED", "CANCELLED"]
+        : order.status === "CONFIRMED"
+          ? ["PREPARING", "CANCELLED"]
+          : order.status === "PREPARING"
+            ? ["READY", "CANCELLED"]
+            : order.status === "READY"
+              ? order.orderType === "DELIVERY"
+                ? ["OUT_FOR_DELIVERY", "CANCELLED"]
+                : ["COMPLETED", "CANCELLED"]
+              : order.status === "OUT_FOR_DELIVERY"
+                ? ["COMPLETED", "CANCELLED"]
+                : [];
     if (!body.status || !allowed.includes(body.status)) {
       return fail("ORDER_INVALID_TRANSITION", "Invalid status transition.", 400);
     }
-    const order = MOCK_ADMIN_ORDERS.find((o) => o.id === params.id);
-    if (order && body.status) {
-      order.status = body.status;
-    }
-    const result = order ?? { ...MOCK_ADMIN_ORDERS[0], status: body.status };
-    return ok(result);
+    order.status = body.status;
+    return ok(order);
   }),
 
   // ---- Admin menu (soft toggle only, no DELETE) ----

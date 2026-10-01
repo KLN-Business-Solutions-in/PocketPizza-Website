@@ -133,7 +133,14 @@ export function KanbanBoard({
                     return (
                       <div
                         key={order.id}
+                        role="button"
+                        tabIndex={0}
                         onClick={() => onSelectOrder?.(order.id)}
+                        onKeyDown={(e) => {
+                          if (e.currentTarget !== e.target || (e.key !== "Enter" && e.key !== " ")) return;
+                          e.preventDefault();
+                          onSelectOrder?.(order.id);
+                        }}
                         className={`group relative flex flex-col gap-2 rounded-lg border bg-white p-3 shadow-sm transition-all hover:shadow-md cursor-pointer ${
                           isSelected ? "ring-2 ring-brand-red border-transparent" : "border-gray-200"
                         }`}
@@ -178,7 +185,7 @@ export function KanbanBoard({
                                       : ""
                                   }`}
                                 >
-                                  → {next.replace("_", " ")}
+                                  → {next.replaceAll("_", " ")}
                                 </Button>
                               );
                             })}
