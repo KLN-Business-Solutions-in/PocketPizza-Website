@@ -30,6 +30,17 @@ model Restaurant {
   address     String?
   deliveryFee Decimal @default(0) @db.Decimal(10, 2)
 
+  // Public site content for the About/Contact pages. All nullable so the
+  // column add is a safe migration on a non-empty table, and the API degrades
+  // to nulls rather than failing. Json holds structured arrays validated at
+  // the API boundary (contract.ts), not arbitrary blobs.
+  aboutText      String?
+  openingHours   Json?
+  socialLinks    Json?
+  mapLat         Float?
+  mapLng         Float?
+  whatsappNumber String?
+
   categories Category[]
   products   MenuItem[]
   customers  Customer[]

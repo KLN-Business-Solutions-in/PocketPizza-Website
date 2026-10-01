@@ -39,7 +39,53 @@ export type SuccessEnvelope<T> = {
   requestId: string;
 };
 
-// 3. MENU (Public)
+// 3. SITE CONTENT (Public)
+// Stored as Json columns on Restaurant and validated here, so a malformed row
+// is rejected at the API boundary rather than leaking to the frontend.
+export const openingHoursEntrySchema = z.object({
+  label: z.string().min(1).max(50),
+  opens: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, 'must be HH:MM 24-hour'),
+  closes: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, 'must be HH:MM 24-hour'),
+});
+export type OpeningHoursEntry = z.infer<typeof openingHoursEntrySchema>;
+
+export const socialLinkSchema = z.object({
+  platform: z.enum(['instagram', 'facebook', 'x', 'whatsapp', 'website']),
+  // url() alone accepts any scheme (javascript:, data:) and this value is rendered
+  // into an href, so pin the protocol and require a parseable hostname.
+  url: z
+    .string()
+    .url()
+    .max(500)
+    .refine(
+      (value) => {
+        try {
+          const { protocol, hostname } = new URL(value);
+          return (protocol === 'https:' || protocol === 'http:') && hostname.length > 0;
+        } catch {
+          return false;
+        }
+      },
+      { message: 'must be an http(s) URL' },
+    ),
+});
+export type SocialLink = z.infer<typeof socialLinkSchema>;
+
+export type RestaurantSiteContent = {
+  name: string;
+  phone: string;
+  whatsappNumber: string | null;
+  address: string | null;
+  aboutText: string | null;
+  /** Null rather than a partial array: an unset row and an empty row are the
+   *  same message to the frontend ("hours not published yet"). */
+  openingHours: OpeningHoursEntry[] | null;
+  socialLinks: SocialLink[] | null;
+  /** Null unless both coordinates are set — a half-set pair is unusable. */
+  map: { lat: number; lng: number } | null;
+};
+
+// 4. MENU (Public)
 export type MenuItemAddon = {
   id: string;
   label: string;
@@ -79,7 +125,7 @@ export type MenuResponse = {
 
 export type ProductDetailResponse = MenuItem;
 
-// 4. ORDERS — Quote
+// 5. ORDERS — Quote
 export const quoteItemSchema = z.object({
   menuItemId: z.string().min(1),
   variantId: z.string().optional(),
@@ -124,7 +170,7 @@ export type QuoteResponse = {
   total: string;
 };
 
-// 5. ORDERS — Create
+// 6. ORDERS — Create
 export const addressSchema = z.object({
   line1: z.string().trim().min(1).max(255),
   line2: z.string().max(255).optional(),
@@ -171,7 +217,7 @@ export type CreateOrderResponse = {
   total: string;
 };
 
-// 6. ORDERS — Status & Invoice
+// 7. ORDERS — Status & Invoice
 export type OrderStatusResponse = {
   orderNumber: string;
   publicToken: string;
@@ -220,7 +266,7 @@ export type InvoiceResponse = {
   createdAt: string;
 };
 
-// 7. AUTH
+// 8. AUTH
 export const loginRequestSchema = z.object({
   email: z.string().email().max(255),
   password: z.string().min(8).max(128),
@@ -237,7 +283,7 @@ export type LoginResponse = {
   };
 };
 
-// 8. ADMIN — Menu
+// 9. ADMIN — Menu
 export const createProductRequestSchema = z.object({
   name: z.string().trim().min(1).max(255),
   description: z.string().max(1000).optional(),
@@ -293,7 +339,7 @@ export type ToggleStatusResponse = {
   isActive: boolean;
 };
 
-// 9. ADMIN — Orders
+// 10. ADMIN — Orders
 export const adminOrderListQuerySchema = z.object({
   status: OrderStatus.optional(),
   dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -348,7 +394,7 @@ export const updateStatusRequestSchema = z.object({
 
 export type UpdateStatusRequest = z.infer<typeof updateStatusRequestSchema>;
 
-// 10. ADMIN — Reports
+// 11. ADMIN — Reports
 export const reportSummaryQuerySchema = z.object({
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
