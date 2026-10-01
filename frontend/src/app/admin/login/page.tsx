@@ -14,6 +14,14 @@ import { Card, ErrorState } from "@/components/ui/LayoutPrimitives";
  * No token in JS, no localStorage. Rate-limited 10/15min (§20.5).
  */
 export default function AdminLoginPage() {
+  return (
+    <React.Suspense fallback={<p className="p-6 text-body text-bodySecondary">Loading login…</p>}>
+      <LoginForm />
+    </React.Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const login = useAdminLogin();
@@ -31,9 +39,11 @@ export default function AdminLoginPage() {
         password,
       });
       const redirectTo = searchParams.get("redirectTo");
-      router.push(
-        redirectTo?.startsWith("/admin") ? redirectTo : "/admin/dashboard"
-      );
+      const destination =
+        redirectTo === "/admin" || redirectTo?.startsWith("/admin/")
+          ? redirectTo
+          : "/admin/dashboard";
+      router.push(destination);
     } catch (err) {
       const api = err as ApiError;
       if (api?.status === 429) {
