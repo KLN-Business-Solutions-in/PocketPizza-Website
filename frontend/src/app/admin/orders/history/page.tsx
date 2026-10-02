@@ -25,22 +25,22 @@ export default function AdminOrderHistoryPage() {
     : orders.data?.items ?? [];
 
   return (
-    <div className="space-y-6 pb-12">
-      <div>
+    <div className="min-w-0 space-y-5 pb-12 sm:space-y-6">
+      <div className="min-w-0">
         <h1 className="font-heading text-h2 font-bold">Order History</h1>
         <p className="mt-1 text-body text-bodySecondary">
           Browse completed and cancelled orders.
         </p>
       </div>
 
-      <Card>
-        <div className="grid gap-4 sm:grid-cols-3">
+      <Card className="min-w-0 p-4 sm:p-6">
+        <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
           <label className="flex flex-col gap-1 text-caption font-semibold text-bodySecondary">
             Status
             <select
               value={status}
               onChange={(event) => setStatus(event.target.value as HistoryStatus)}
-              className="rounded-md border border-border-default bg-white px-3 py-2 text-body text-charcoal"
+              className="w-full min-w-0 rounded-md border border-border-default bg-white px-3 py-2 text-body text-charcoal"
             >
               <option value="COMPLETED">Completed</option>
               <option value="CANCELLED">Cancelled</option>
@@ -52,7 +52,7 @@ export default function AdminOrderHistoryPage() {
               type="date"
               value={dateFrom}
               onChange={(event) => setDateFrom(event.target.value)}
-              className="rounded-md border border-border-default bg-white px-3 py-2 text-body text-charcoal"
+              className="w-full min-w-0 rounded-md border border-border-default bg-white px-3 py-2 text-body text-charcoal"
             />
           </label>
           <label className="flex flex-col gap-1 text-caption font-semibold text-bodySecondary">
@@ -61,7 +61,7 @@ export default function AdminOrderHistoryPage() {
               type="date"
               value={dateTo}
               onChange={(event) => setDateTo(event.target.value)}
-              className="rounded-md border border-border-default bg-white px-3 py-2 text-body text-charcoal"
+              className="w-full min-w-0 rounded-md border border-border-default bg-white px-3 py-2 text-body text-charcoal"
             />
           </label>
         </div>
@@ -75,13 +75,13 @@ export default function AdminOrderHistoryPage() {
           onRetry={() => orders.refetch()}
         />
       ) : list.length === 0 ? (
-        <Card>
+        <Card className="p-4 sm:p-6">
           <p className="py-4 text-center text-body text-bodySecondary">
             No orders match these filters.
           </p>
         </Card>
       ) : (
-        <Card className="overflow-x-auto p-0">
+        <Card className="min-w-0 overscroll-x-contain overflow-x-auto p-0">
           <table className="w-full min-w-[720px] border-collapse text-left text-body">
             <thead className="bg-neutralTint text-caption uppercase text-bodySecondary">
               <tr>
@@ -96,7 +96,7 @@ export default function AdminOrderHistoryPage() {
             <tbody>
               {list.map((order) => (
                 <tr key={order.id} className="border-t border-border-default">
-                  <td className="px-4 py-3 font-semibold">
+                  <td className="whitespace-nowrap px-4 py-3 font-semibold">
                     <Link
                       href={`/admin/orders/${encodeURIComponent(order.id)}`}
                       className="text-brand-red underline"
@@ -104,11 +104,11 @@ export default function AdminOrderHistoryPage() {
                       {order.orderNumber}
                     </Link>
                   </td>
-                  <td className="px-4 py-3">{new Date(order.createdAt).toLocaleString()}</td>
-                  <td className="px-4 py-3">{order.customer.name}</td>
-                  <td className="px-4 py-3">{order.orderType.replaceAll("_", " ")}</td>
-                  <td className="px-4 py-3 text-right">{order.total}</td>
-                  <td className="px-4 py-3">{order.status.replaceAll("_", " ")}</td>
+                  <td className="whitespace-nowrap px-4 py-3">{new Date(order.createdAt).toLocaleString()}</td>
+                  <td className="max-w-56 break-words px-4 py-3">{order.customer.name}</td>
+                  <td className="whitespace-nowrap px-4 py-3">{order.orderType.replaceAll("_", " ")}</td>
+                  <td className="whitespace-nowrap px-4 py-3 text-right">{order.total}</td>
+                  <td className="whitespace-nowrap px-4 py-3">{order.status.replaceAll("_", " ")}</td>
                 </tr>
               ))}
             </tbody>

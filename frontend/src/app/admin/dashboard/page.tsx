@@ -111,9 +111,9 @@ export default function AdminDashboardPage() {
   };
 
   return (
-    <div className="space-y-6 pb-12">
-      <div className="flex items-center justify-between">
-        <div>
+    <div className="min-w-0 space-y-5 pb-12 sm:space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-h2 font-heading font-bold">Admin Dashboard</h1>
           <p className="text-caption text-gray-500">Live order queue and status workflow</p>
         </div>
@@ -132,13 +132,13 @@ export default function AdminDashboardPage() {
       {report.data && (
         <Card>
           <h2 className="font-heading font-bold">Today&apos;s summary</h2>
-          <p className="mt-1 text-body">
+          <p className="mt-1 break-words text-body">
             Orders: {report.data.orderCount.total} (completed {report.data.orderCount.completed},
             cancelled {report.data.orderCount.cancelled}) · Sales{" "}
             {formatINR(report.data.salesTotal)} · AOV {formatINR(report.data.averageOrderValue)}
           </p>
           {report.data.topItems.length > 0 && (
-            <p className="mt-1 text-caption text-mutedGray">
+            <p className="mt-1 break-words text-caption text-mutedGray">
               Top: {report.data.topItems.map((t) => `${t.name} ×${t.quantity}`).join(", ")}
             </p>
           )}
@@ -146,13 +146,13 @@ export default function AdminDashboardPage() {
       )}
 
       {/* Filters Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-xl border shadow-sm">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Filters:</span>
+      <div className="flex flex-col gap-4 rounded-xl border border-border-default bg-white p-3 shadow-sm sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:p-4">
+        <div className="grid min-w-0 grid-cols-1 gap-3 sm:flex sm:flex-wrap sm:items-center">
+          <span className="col-span-full text-xs font-semibold uppercase tracking-wider text-gray-600 sm:col-span-1">Filters:</span>
           <select
             value={statusFilter ?? ""}
             onChange={(e) => setStatusFilter((e.target.value || undefined) as OrderStatus | undefined)}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-red/20"
+            className="w-full min-w-0 rounded-lg border border-border-default bg-gray-50 px-3 py-2 text-xs font-medium text-gray-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-red/20 sm:w-auto"
             aria-label="Filter by status"
           >
             {STATUSES.map((s) => (
@@ -162,7 +162,7 @@ export default function AdminDashboardPage() {
           <select
             value={typeFilter ?? ""}
             onChange={(e) => setTypeFilter((e.target.value || undefined) as OrderType | undefined)}
-            className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-red/20"
+            className="w-full min-w-0 rounded-lg border border-border-default bg-gray-50 px-3 py-2 text-xs font-medium text-gray-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-red/20 sm:w-auto"
             aria-label="Filter by type"
           >
             <option value="">All types</option>
@@ -171,7 +171,7 @@ export default function AdminDashboardPage() {
             <option value="DINE_IN">DINE_IN</option>
           </select>
         </div>
-        <div className="text-xs text-gray-500 font-medium">
+        <div className="text-xs font-medium text-gray-500 sm:shrink-0">
           Total orders: <strong className="text-gray-900">{list.length}</strong>
         </div>
       </div>
@@ -193,8 +193,8 @@ export default function AdminDashboardPage() {
 
       {/* KOT Detail Drawer/Card */}
       {selectedId && (
-        <Card className="border-l-4 border-l-brand-red">
-          <div className="flex items-center justify-between pb-2 border-b">
+        <Card className="min-w-0 border-l-4 border-l-brand-red p-4 sm:p-6">
+          <div className="flex items-center justify-between gap-3 border-b border-border-default pb-2">
             <h2 className="font-heading font-bold text-lg">KOT Detail</h2>
             <Button variant="ghost" size="sm" onClick={() => setSelectedId(null)}>
               Close
@@ -203,23 +203,23 @@ export default function AdminDashboardPage() {
           {detail.isLoading && <p className="text-body py-4">Loading order details…</p>}
           {detail.isError && <ErrorState message="Failed to load order detail." onRetry={() => detail.refetch()} />}
           {detail.data && (
-            <div className="mt-4 space-y-3 text-body">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="font-bold text-gray-900 text-lg">{detail.data.orderNumber}</span>
+            <div className="mt-4 min-w-0 space-y-3 text-body">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex min-w-0 flex-wrap items-center gap-y-1">
+                  <span className="break-all text-lg font-bold text-gray-900">{detail.data.orderNumber}</span>
                   <span className="ml-2 inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
                     {detail.data.orderType}
                   </span>
                 </div>
-                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-brand-red/10 text-brand-red">
+                <span className="shrink-0 rounded-full bg-brand-red/10 px-2.5 py-1 text-xs font-bold text-brand-red">
                   {detail.data.status}
                 </span>
               </div>
-              <p className="text-bodySecondary text-sm">
+              <p className="break-words text-sm text-bodySecondary">
                 Customer: <strong className="text-gray-800">{detail.data.customer.name}</strong> ({detail.data.customer.phone})
               </p>
               {detail.data.orderType === "DELIVERY" && detail.data.address && (
-                <address className="text-bodySecondary text-sm not-italic">
+                <address className="break-words text-sm text-bodySecondary not-italic">
                   {detail.data.address.line1}
                   {detail.data.address.line2 ? `, ${detail.data.address.line2}` : ""}
                   {detail.data.address.landmark ? ` (${detail.data.address.landmark})` : ""}
@@ -228,19 +228,19 @@ export default function AdminDashboardPage() {
                 </address>
               )}
               {detail.data.notes && (
-                <p className="text-xs bg-amber-50 text-amber-900 p-2 rounded border border-amber-200">
+                <p className="break-words rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
                   Notes: {detail.data.notes}
                 </p>
               )}
-              <div className="border-t border-b py-2 space-y-1">
+              <div className="min-w-0 space-y-2 border-y border-border-default py-3">
                 <p className="text-xs font-bold text-gray-500 uppercase">Items</p>
-                <ul className="list-disc pl-5 space-y-1 text-sm">
+                <ul className="list-disc space-y-2 pl-5 text-sm">
                   {detail.data.items.map((it, i) => (
-                    <li key={i}>
+                    <li key={i} className="break-words">
                       <span className="font-semibold">{it.quantity}×</span> {it.nameSnapshot}
                       {it.variantSnapshot ? ` (${it.variantSnapshot})` : ""}
                       {it.addOnSnapshot && it.addOnSnapshot.length > 0 && (
-                        <span className="text-xs text-gray-500">
+                        <span className="break-words text-xs text-gray-500">
                           {" "}+ {it.addOnSnapshot.map((a) => a.label).join(", ")}
                         </span>
                       )}
@@ -248,13 +248,13 @@ export default function AdminDashboardPage() {
                   ))}
                 </ul>
               </div>
-              <div className="flex items-center justify-between font-bold text-base">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-base font-bold">
                 <span>Total Amount:</span>
                 <span>{formatINR(detail.data.total)}</span>
               </div>
-              <div className="flex flex-wrap gap-2 pt-2">
+              <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:flex-wrap">
                 {ALLOWED_TRANSITIONS[detail.data.status].map((next) => (
-                  <Button key={next} size="sm" onClick={() => doTransition(next)} isLoading={updateStatus.isPending}>
+                  <Button key={next} size="sm" className="w-full whitespace-normal px-3 text-center sm:w-auto" onClick={() => doTransition(next)} isLoading={updateStatus.isPending}>
                     → {next.replaceAll("_", " ")}
                   </Button>
                 ))}

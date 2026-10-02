@@ -50,26 +50,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen bg-cream-bg flex flex-col">
       {/* Top Admin Navigation Header */}
-      <header className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-8">
-              <Link href="/admin/dashboard" className="flex items-center gap-2">
+      <header className="sticky top-0 z-40 border-b border-border-default bg-white shadow-sm">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-3 py-3 sm:h-16 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:py-0">
+            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-8">
+              <Link href="/admin/dashboard" className="flex shrink-0 items-center gap-2">
                 <span className="font-heading font-extrabold text-xl text-brand-red">
                   Pokket Pizza
                 </span>
-                <span className="bg-brand-red/10 text-brand-red text-xs font-bold px-2 py-0.5 rounded">
+                <span className="rounded bg-brand-red/10 px-2 py-0.5 text-xs font-bold text-brand-red">
                   Admin
                 </span>
               </Link>
-              <nav className="flex items-center gap-1">
+              <nav className="-mx-1 flex max-w-full items-center gap-1 overflow-x-auto px-1 pb-1 sm:mx-0 sm:pb-0">
                 {navItems.map((item) => {
                   const isActive = pathname === item.href;
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
-                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      className={`shrink-0 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                         isActive
                           ? "bg-brand-red/10 text-brand-red font-semibold"
                           : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
@@ -82,7 +82,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </nav>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end sm:gap-4">
               <span className="text-xs text-gray-500 font-medium hidden sm:inline-block">
                 Logged in as <strong className="text-gray-800">Admin</strong>
               </span>
