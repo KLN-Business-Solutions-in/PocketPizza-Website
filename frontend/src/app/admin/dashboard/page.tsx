@@ -218,6 +218,15 @@ export default function AdminDashboardPage() {
               <p className="text-bodySecondary text-sm">
                 Customer: <strong className="text-gray-800">{detail.data.customer.name}</strong> ({detail.data.customer.phone})
               </p>
+              {detail.data.orderType === "DELIVERY" && detail.data.address && (
+                <address className="text-bodySecondary text-sm not-italic">
+                  {detail.data.address.line1}
+                  {detail.data.address.line2 ? `, ${detail.data.address.line2}` : ""}
+                  {detail.data.address.landmark ? ` (${detail.data.address.landmark})` : ""}
+                  <br />
+                  {detail.data.address.city}, {detail.data.address.pincode}
+                </address>
+              )}
               {detail.data.notes && (
                 <p className="text-xs bg-amber-50 text-amber-900 p-2 rounded border border-amber-200">
                   Notes: {detail.data.notes}
