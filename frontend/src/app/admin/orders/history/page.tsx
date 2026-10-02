@@ -5,24 +5,28 @@ import React from "react";
 import { useAdminOrders } from "@/lib/api/admin";
 import type { AdminOrderSummary, OrderStatus } from "@shared/contract/contract";
 import { Card, ErrorState } from "@/components/ui/LayoutPrimitives";
+import { Button } from "@/components/ui/Button";
 
 type HistoryStatus = Extract<OrderStatus, "COMPLETED" | "CANCELLED">;
+const PAGE_SIZE = 100;
 
 export default function AdminOrderHistoryPage() {
   const [status, setStatus] = React.useState<HistoryStatus>("COMPLETED");
   const [dateFrom, setDateFrom] = React.useState("");
   const [dateTo, setDateTo] = React.useState("");
+  const [page, setPage] = React.useState(1);
   const orders = useAdminOrders({
     status,
     ...(dateFrom ? { dateFrom } : {}),
     ...(dateTo ? { dateTo } : {}),
-    page: 1,
-    pageSize: 100,
+    page,
+    pageSize: PAGE_SIZE,
   });
 
   const list: AdminOrderSummary[] = Array.isArray(orders.data)
     ? orders.data
     : orders.data?.items ?? [];
+  const hasNextPage = list.length === PAGE_SIZE;
 
   return (
     <div className="min-w-0 space-y-5 pb-12 sm:space-y-6">
@@ -39,7 +43,10 @@ export default function AdminOrderHistoryPage() {
             Status
             <select
               value={status}
-              onChange={(event) => setStatus(event.target.value as HistoryStatus)}
+              onChange={(event) => {
+                setStatus(event.target.value as HistoryStatus);
+                setPage(1);
+              }}
               className="w-full min-w-0 rounded-md border border-border-default bg-white px-3 py-2 text-body text-charcoal"
             >
               <option value="COMPLETED">Completed</option>
@@ -51,7 +58,10 @@ export default function AdminOrderHistoryPage() {
             <input
               type="date"
               value={dateFrom}
-              onChange={(event) => setDateFrom(event.target.value)}
+              onChange={(event) => {
+                setDateFrom(event.target.value);
+                setPage(1);
+              }}
               className="w-full min-w-0 rounded-md border border-border-default bg-white px-3 py-2 text-body text-charcoal"
             />
           </label>
@@ -60,7 +70,10 @@ export default function AdminOrderHistoryPage() {
             <input
               type="date"
               value={dateTo}
-              onChange={(event) => setDateTo(event.target.value)}
+              onChange={(event) => {
+                setDateTo(event.target.value);
+                setPage(1);
+              }}
               className="w-full min-w-0 rounded-md border border-border-default bg-white px-3 py-2 text-body text-charcoal"
             />
           </label>
@@ -115,6 +128,26 @@ export default function AdminOrderHistoryPage() {
           </table>
         </Card>
       )}
+
+      <div className="flex items-center justify-between gap-3">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={page === 1 || orders.isLoading}
+          onClick={() => setPage((current) => Math.max(1, current - 1))}
+        >
+          Previous
+        </Button>
+        <span className="text-caption text-bodySecondary">Page {page}</span>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={!hasNextPage || orders.isLoading}
+          onClick={() => setPage((current) => current + 1)}
+        >
+          Next
+        </Button>
+      </div>
     </div>
   );
 }

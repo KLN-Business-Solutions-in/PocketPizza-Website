@@ -179,7 +179,7 @@ function ProductRow({
   };
 
   return (
-    <li className="flex min-w-0 flex-col items-stretch gap-3 border-t border-border-default py-3 text-body sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+    <li className="flex min-w-0 flex-col items-stretch gap-3 border-t border-border-default py-3 text-body sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
       <span className="min-w-0 break-words">
         <span className={isActive ? "" : "line-through text-mutedGray"}>{name}</span>{" "}
         <span className="text-caption text-mutedGray">{formatINR(basePrice)}</span>{" "}
@@ -205,7 +205,7 @@ function ProductRow({
           {toggling ? "…" : isActive ? "Disable" : "Enable"}
         </Button>
       </span>
-      {err && <span className="w-full text-caption text-brand-red">{err}</span>}
+      {err && <span className="w-full text-caption text-brand-red sm:basis-full">{err}</span>}
       <span className="hidden">{id}</span>
     </li>
   );

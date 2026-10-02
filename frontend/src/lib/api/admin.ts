@@ -115,7 +115,21 @@ export function useUpdateOrderStatus(orderId: string) {
       if (context) {
         qc.setQueryData(["admin", "order", orderId], context.previousOrder);
         context.previousOrders.forEach(([queryKey, data]) => {
-          qc.setQueryData(queryKey, data);
+          const previousList = Array.isArray(data) ? data : data?.items ?? [];
+          const previousStatus = previousList.find((order) => order.id === orderId)?.status;
+          if (previousStatus === undefined) return;
+
+          qc.setQueryData<AdminOrderSummary[] | { items: AdminOrderSummary[] }>(
+            queryKey,
+            (current) => {
+              if (!current) return current;
+              const restoreOrder = (order: AdminOrderSummary) =>
+                order.id === orderId ? { ...order, status: previousStatus } : order;
+              return Array.isArray(current)
+                ? current.map(restoreOrder)
+                : { ...current, items: current.items.map(restoreOrder) };
+            }
+          );
         });
       }
       push("Failed to update order status. Reverted.", "error");
