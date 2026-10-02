@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "./client";
+import { useToast } from "@/components/ui/ToastProvider";
 import type {
   AdminMenuResponse,
   AdminOrderDetail,
@@ -47,6 +48,7 @@ export function useAdminOrders(filters: AdminOrderFilters) {
   return useQuery<AdminOrderSummary[] | { items: AdminOrderSummary[] }>({
     queryKey: ["admin", "orders", filters],
     queryFn: () => apiFetch(`/admin/orders${toSearch(filters)}`),
+    refetchInterval: 12000,
   });
 }
 
@@ -71,12 +73,53 @@ export const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
 
 export function useUpdateOrderStatus(orderId: string) {
   const qc = useQueryClient();
+  const { push } = useToast();
   return useMutation({
     mutationFn: (body: UpdateStatusRequest) =>
       apiFetch<AdminOrderDetail>(`/admin/orders/${orderId}/status`, {
         method: "PATCH",
         body: JSON.stringify(body),
       }),
+    onMutate: async (body) => {
+      const ordersQueryKey = ["admin", "orders"] as const;
+      const orderQueryKey = ["admin", "order", orderId] as const;
+
+      await Promise.all([
+        qc.cancelQueries({ queryKey: ordersQueryKey }),
+        qc.cancelQueries({ queryKey: orderQueryKey }),
+      ]);
+
+      const previousOrder = qc.getQueryData<AdminOrderDetail>(orderQueryKey);
+      const previousOrders = qc.getQueriesData<
+        AdminOrderSummary[] | { items: AdminOrderSummary[] }
+      >({ queryKey: ordersQueryKey });
+
+      qc.setQueryData<AdminOrderDetail>(orderQueryKey, (current) =>
+        current ? { ...current, status: body.status } : current
+      );
+      qc.setQueriesData<AdminOrderSummary[] | { items: AdminOrderSummary[] }>(
+        { queryKey: ordersQueryKey },
+        (current) => {
+          if (!current) return current;
+          const updateOrder = (order: AdminOrderSummary) =>
+            order.id === orderId ? { ...order, status: body.status } : order;
+          return Array.isArray(current)
+            ? current.map(updateOrder)
+            : { ...current, items: current.items.map(updateOrder) };
+        }
+      );
+
+      return { previousOrder, previousOrders };
+    },
+    onError: (_err, _body, context) => {
+      if (context) {
+        qc.setQueryData(["admin", "order", orderId], context.previousOrder);
+        context.previousOrders.forEach(([queryKey, data]) => {
+          qc.setQueryData(queryKey, data);
+        });
+      }
+      push("Failed to update order status. Reverted.", "error");
+    },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["admin", "orders"] });
       qc.invalidateQueries({ queryKey: ["admin", "order", orderId] });

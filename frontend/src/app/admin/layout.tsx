@@ -43,6 +43,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const navItems = [
     { href: "/admin/dashboard", label: "Orders Kanban" },
+    { href: "/admin/orders/history", label: "Order History" },
     { href: "/admin/menu-manager", label: "Menu Manager" },
   ];
 
