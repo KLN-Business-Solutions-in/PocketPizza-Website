@@ -1,0 +1,669 @@
+﻿diff --git a/frontend/lib/api.ts b/frontend/lib/api.ts
+index 5cae0f9..3f984b5 100644
+--- a/frontend/lib/api.ts
++++ b/frontend/lib/api.ts
+@@ -87,9 +87,22 @@ export async function apiFetch<T>(
+     url,
+   });
+ 
++  const code = errorEnvelope?.error?.code ?? "INTERNAL_ERROR";
++  const message = errorEnvelope?.error?.message || `Request failed (HTTP ${res.status}).`;
++
++  // Global 401 Interceptor: If we get a genuine AUTHENTICATION_REQUIRED from any admin API call,
++  // we perform a hard redirect to the login page. A hard redirect (window.location.href) 
++  // automatically clears all in-memory local state (React Query cache, etc.) and ensures a clean slate.
++  if (res.status === 401 && code === "AUTHENTICATION_REQUIRED") {
++    if (typeof window !== "undefined" && window.location.pathname !== "/admin/login") {
++      window.location.href = "/admin/login?reason=expired";
++      // We still throw to prevent the caller from continuing execution
++    }
++  }
++
+   throw new ApiError({
+-    code: errorEnvelope?.error?.code ?? "INTERNAL_ERROR",
+-    message: errorEnvelope?.error?.message || `Request failed (HTTP ${res.status}).`,
++    code,
++    message,
+     status: res.status,
+     details: errorEnvelope?.error?.details,
+     requestId,
+diff --git a/frontend/src/app/admin/dashboard/page.tsx b/frontend/src/app/admin/dashboard/page.tsx
+index 1ccc23a..d1b36d9 100644
+--- a/frontend/src/app/admin/dashboard/page.tsx
++++ b/frontend/src/app/admin/dashboard/page.tsx
+@@ -11,18 +11,15 @@ import {
+ } from "@/lib/api/admin";
+ import { useAdminLogout, useAdminSession } from "@/lib/api/auth";
+ import { formatINR } from "@/lib/money";
+-import { ApiError } from "@/lib/api/client";
++import { apiFetch, ApiError } from "@/lib/api/client";
+ import { Button } from "@/components/ui/Button";
+ import { Card, ErrorState } from "@/components/ui/LayoutPrimitives";
++import { KanbanBoard, KanbanOrder } from "@/components/admin/KanbanBoard";
+ import type { OrderStatus, OrderType } from "@shared/contract/contract";
+ 
+ /**
+  * Admin dashboard ΓÇö Backend Master Reference ┬º11.7ΓÇô11.9, ┬º14, ┬º17.
+- * - List: status/dateFrom/dateTo/type filters, page/pageSize (max 100)
+- * - Detail: KOT view + status history
+- * - Status PATCH: hardcoded allow-list; READYΓåÆOUT_FOR_DELIVERY only for
+- *   DELIVERY, READYΓåÆCOMPLETED only when not DELIVERY.
+- * Cross-restaurant IDs surface as 404 (never trust client restaurantId, ┬º20.10).
++ * Kanban Board across 7 statuses: NEW, CONFIRMED, PREPARING, READY, OUT_FOR_DELIVERY, COMPLETED, CANCELLED.
+  */
+ 
+ const STATUSES: (OrderStatus | "")[] = [
+@@ -45,18 +42,18 @@ export default function AdminDashboardPage() {
+   const session = useAdminSession();
+   const logout = useAdminLogout();
+ 
+-  const [status, setStatus] = React.useState<OrderStatus | undefined>(undefined);
+-  const [type, setType] = React.useState<OrderType | undefined>(undefined);
+-  const [page, setPage] = React.useState(1);
++  const [statusFilter, setStatusFilter] = React.useState<OrderStatus | undefined>(undefined);
++  const [typeFilter, setTypeFilter] = React.useState<OrderType | undefined>(undefined);
+   const [selectedId, setSelectedId] = React.useState<string | null>(null);
+   const [reportFrom] = React.useState(() => today());
+   const [reportTo] = React.useState(() => today());
+ 
+-  const orders = useAdminOrders({ status, type, page, pageSize: 20 });
++  const orders = useAdminOrders({ status: statusFilter, type: typeFilter, page: 1, pageSize: 100 });
+   const detail = useAdminOrderDetail(selectedId ?? undefined);
+   const updateStatus = useUpdateOrderStatus(selectedId ?? "");
+   const report = useReportSummary(reportFrom, reportTo, session.data?.ok === true);
+   const [statusError, setStatusError] = React.useState<string | null>(null);
++  const [isUpdating, setIsUpdating] = React.useState(false);
+ 
+   React.useEffect(() => {
+     if (session.data?.ok === false) router.replace("/admin/login");
+@@ -65,13 +62,33 @@ export default function AdminDashboardPage() {
+   if (session.isLoading) return <p className="py-12 text-body">Checking sessionΓÇª</p>;
+   if (session.data?.ok === false) return null;
+ 
+-  const list: { id: string; orderNumber: string; status: OrderStatus; orderType: OrderType; total: string; customer: { name: string; phone: string }; createdAt: string }[] =
+-    Array.isArray(orders.data) ? orders.data : (orders.data as { items?: typeof list })?.items ?? [];
++  const list: KanbanOrder[] = Array.isArray(orders.data)
++    ? (orders.data as KanbanOrder[])
++    : ((orders.data as { items?: KanbanOrder[] })?.items ?? []);
++
++  const handleUpdateStatus = async (id: string, nextStatus: OrderStatus) => {
++    setStatusError(null);
++    setIsUpdating(true);
++    try {
++      await apiFetch(`/admin/orders/${id}/status`, {
++        method: "PATCH",
++        body: JSON.stringify({ status: nextStatus }),
++      });
++      await orders.refetch();
++      if (selectedId === id) {
++        await detail.refetch();
++      }
++    } catch (err) {
++      const api = err as ApiError;
++      setStatusError(api?.message || "Status update failed.");
++    } finally {
++      setIsUpdating(false);
++    }
++  };
+ 
+   const doTransition = async (next: OrderStatus) => {
+     setStatusError(null);
+     if (!selectedId || !detail.data) return;
+-    // Client-side guard mirrors ┬º17 (server still enforces).
+     if (!ALLOWED_TRANSITIONS[detail.data.status].includes(next)) {
+       setStatusError(`Transition ${detail.data.status} ΓåÆ ${next} is not allowed.`);
+       return;
+@@ -86,6 +103,7 @@ export default function AdminDashboardPage() {
+     }
+     try {
+       await updateStatus.mutateAsync({ status: next });
++      await orders.refetch();
+     } catch (err) {
+       const api = err as ApiError;
+       setStatusError(api?.message || "Status update failed.");
+@@ -95,7 +113,10 @@ export default function AdminDashboardPage() {
+   return (
+     <div className="space-y-6 pb-12">
+       <div className="flex items-center justify-between">
+-        <h1 className="text-h2 font-heading font-bold">Admin Dashboard</h1>
++        <div>
++          <h1 className="text-h2 font-heading font-bold">Admin Dashboard</h1>
++          <p className="text-caption text-gray-500">Live order queue and status workflow</p>
++        </div>
+         <Button
+           variant="outline"
+           size="sm"
+@@ -124,12 +145,14 @@ export default function AdminDashboardPage() {
+         </Card>
+       )}
+ 
+-      <Card>
+-        <div className="flex flex-wrap gap-2">
++      {/* Filters Bar */}
++      <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-xl border shadow-sm">
++        <div className="flex flex-wrap items-center gap-3">
++          <span className="text-xs font-semibold text-gray-600 uppercase tracking-wider">Filters:</span>
+           <select
+-            value={status ?? ""}
+-            onChange={(e) => { setStatus((e.target.value || undefined) as OrderStatus | undefined); setPage(1); }}
+-            className="rounded-md border px-3 py-2 text-body"
++            value={statusFilter ?? ""}
++            onChange={(e) => setStatusFilter((e.target.value || undefined) as OrderStatus | undefined)}
++            className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-red/20"
+             aria-label="Filter by status"
+           >
+             {STATUSES.map((s) => (
+@@ -137,9 +160,9 @@ export default function AdminDashboardPage() {
+             ))}
+           </select>
+           <select
+-            value={type ?? ""}
+-            onChange={(e) => { setType((e.target.value || undefined) as OrderType | undefined); setPage(1); }}
+-            className="rounded-md border px-3 py-2 text-body"
++            value={typeFilter ?? ""}
++            onChange={(e) => setTypeFilter((e.target.value || undefined) as OrderType | undefined)}
++            className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-red/20"
+             aria-label="Filter by type"
+           >
+             <option value="">All types</option>
+@@ -148,61 +171,78 @@ export default function AdminDashboardPage() {
+             <option value="DINE_IN">DINE_IN</option>
+           </select>
+         </div>
+-
+-        {orders.isError && (
+-          <div className="mt-3">
+-            <ErrorState message="Failed to load orders." onRetry={() => orders.refetch()} />
+-          </div>
+-        )}
+-        <ul className="mt-3 divide-y">
+-          {list.map((o) => (
+-            <li key={o.id}>
+-              <button
+-                onClick={() => setSelectedId(o.id)}
+-                className={`flex w-full items-center justify-between py-2 text-left text-body hover:text-brand-red ${selectedId === o.id ? "font-bold text-brand-red" : ""}`}
+-              >
+-                <span>{o.orderNumber} ┬╖ {o.customer.name} ┬╖ {o.status}</span>
+-                <span className="font-semibold">{formatINR(o.total)}</span>
+-              </button>
+-            </li>
+-          ))}
+-        </ul>
+-        {list.length === 0 && !orders.isLoading && (
+-          <p className="mt-2 text-body text-bodySecondary">No orders for these filters.</p>
+-        )}
+-        <div className="mt-3 flex gap-2">
+-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+-            Prev
+-          </Button>
+-          <span className="px-2 py-1 text-body">Page {page}</span>
+-          <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)}>
+-            Next
+-          </Button>
++        <div className="text-xs text-gray-500 font-medium">
++          Total orders: <strong className="text-gray-900">{list.length}</strong>
+         </div>
+-      </Card>
++      </div>
+ 
++      {statusError && <ErrorState message={statusError} />}
++
++      {orders.isError && (
++        <ErrorState message="Failed to load orders." onRetry={() => orders.refetch()} />
++      )}
++
++      {/* 7-Column Kanban Board */}
++      <KanbanBoard
++        orders={list}
++        selectedId={selectedId}
++        onSelectOrder={setSelectedId}
++        onUpdateStatus={handleUpdateStatus}
++        isUpdating={isUpdating}
++      />
++
++      {/* KOT Detail Drawer/Card */}
+       {selectedId && (
+-        <Card>
+-          <h2 className="font-heading font-bold">KOT detail</h2>
+-          {detail.isLoading && <p className="text-body">LoadingΓÇª</p>}
++        <Card className="border-l-4 border-l-brand-red">
++          <div className="flex items-center justify-between pb-2 border-b">
++            <h2 className="font-heading font-bold text-lg">KOT Detail</h2>
++            <Button variant="ghost" size="sm" onClick={() => setSelectedId(null)}>
++              Close
++            </Button>
++          </div>
++          {detail.isLoading && <p className="text-body py-4">Loading order detailsΓÇª</p>}
+           {detail.isError && <ErrorState message="Failed to load order detail." onRetry={() => detail.refetch()} />}
+           {detail.data && (
+-            <div className="mt-2 space-y-2 text-body">
+-              <p>
+-                {detail.data.orderNumber} ┬╖ {detail.data.orderType} ┬╖ {detail.data.status}
+-              </p>
+-              <p className="text-bodySecondary">
+-                {detail.data.customer.name} ┬╖ {detail.data.customer.phone}
++            <div className="mt-4 space-y-3 text-body">
++              <div className="flex items-center justify-between">
++                <div>
++                  <span className="font-bold text-gray-900 text-lg">{detail.data.orderNumber}</span>
++                  <span className="ml-2 inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
++                    {detail.data.orderType}
++                  </span>
++                </div>
++                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-brand-red/10 text-brand-red">
++                  {detail.data.status}
++                </span>
++              </div>
++              <p className="text-bodySecondary text-sm">
++                Customer: <strong className="text-gray-800">{detail.data.customer.name}</strong> ({detail.data.customer.phone})
+               </p>
+-              <ul className="list-disc pl-5">
+-                {detail.data.items.map((it, i) => (
+-                  <li key={i}>
+-                    {it.quantity}├ù {it.nameSnapshot}
+-                    {it.variantSnapshot ? ` (${it.variantSnapshot})` : ""}
+-                  </li>
+-                ))}
+-              </ul>
+-              <p className="font-bold">Total {formatINR(detail.data.total)}</p>
++              {detail.data.notes && (
++                <p className="text-xs bg-amber-50 text-amber-900 p-2 rounded border border-amber-200">
++                  Notes: {detail.data.notes}
++                </p>
++              )}
++              <div className="border-t border-b py-2 space-y-1">
++                <p className="text-xs font-bold text-gray-500 uppercase">Items</p>
++                <ul className="list-disc pl-5 space-y-1 text-sm">
++                  {detail.data.items.map((it, i) => (
++                    <li key={i}>
++                      <span className="font-semibold">{it.quantity}├ù</span> {it.nameSnapshot}
++                      {it.variantSnapshot ? ` (${it.variantSnapshot})` : ""}
++                      {it.addOnSnapshot && it.addOnSnapshot.length > 0 && (
++                        <span className="text-xs text-gray-500">
++                          {" "}+ {it.addOnSnapshot.map((a) => a.label).join(", ")}
++                        </span>
++                      )}
++                    </li>
++                  ))}
++                </ul>
++              </div>
++              <div className="flex items-center justify-between font-bold text-base">
++                <span>Total Amount:</span>
++                <span>{formatINR(detail.data.total)}</span>
++              </div>
+               <div className="flex flex-wrap gap-2 pt-2">
+                 {ALLOWED_TRANSITIONS[detail.data.status].map((next) => (
+                   <Button key={next} size="sm" onClick={() => doTransition(next)} isLoading={updateStatus.isPending}>
+@@ -210,7 +250,6 @@ export default function AdminDashboardPage() {
+                   </Button>
+                 ))}
+               </div>
+-              {statusError && <ErrorState message={statusError} />}
+             </div>
+           )}
+         </Card>
+@@ -218,3 +257,4 @@ export default function AdminDashboardPage() {
+     </div>
+   );
+ }
++
+diff --git a/frontend/src/lib/api/auth.ts b/frontend/src/lib/api/auth.ts
+index adfb05b..ea81bb4 100644
+--- a/frontend/src/lib/api/auth.ts
++++ b/frontend/src/lib/api/auth.ts
+@@ -49,18 +49,45 @@ export function useAdminLogout() {
+ /**
+  * Lightweight session probe: admin-only endpoint. 401 ΓåÆ not logged in.
+  * Uses GET /api/v1/admin/orders?pageSize=1 as the guard (no dedicated /me in MVP).
++ *
++ * IMPORTANT: Only a genuine 401 AUTHENTICATION_REQUIRED signals "not logged in."
++ * A 404 (endpoint not yet built on backend), 500, or network error must NOT
++ * redirect to login ΓÇö those are backend/infra issues, not auth failures.
++ *
++ * MOCK MODE: When NEXT_PUBLIC_USE_MOCKS=true, the session probe is skipped
++ * entirely ΓÇö MSW module-level state resets on Next.js navigations, making
++ * cookie/session simulation unreliable. Route protection in mock mode is
++ * intentionally relaxed; real cookie enforcement happens on the live backend.
+  */
+ export function useAdminSession() {
++  const isMockMode = process.env.NEXT_PUBLIC_USE_MOCKS === "true";
++
+   return useQuery({
+     queryKey: ["admin", "session"],
+     queryFn: async (): Promise<{ ok: boolean }> => {
++      // In mock mode: skip the probe ΓÇö always report session as active.
++      // MSW cannot reliably read the real backend's cross-origin HttpOnly
++      // cookies, so route protection must be relaxed in mock mode.
++      if (isMockMode) {
++        return { ok: true };
++      }
++
+       try {
+         await apiFetch("/admin/orders?page=1&pageSize=1");
+         return { ok: true };
+       } catch (e: unknown) {
+-        const err = e as { status?: number };
+-        if (err?.status === 401) return { ok: false };
+-        throw e;
++        const err = e as { status?: number; code?: string };
++        // Only treat a real 401 AUTHENTICATION_REQUIRED as "not logged in".
++        // 404 = backend endpoint not built yet ΓåÆ treat as ok (don't redirect).
++        // 500/network = infra error ΓåÆ treat as ok (don't redirect).
++        if (
++          err?.status === 401 &&
++          (err?.code === "AUTHENTICATION_REQUIRED" || err?.code === "AUTHENTICATION_INVALID")
++        ) {
++          return { ok: false };
++        }
++        // Any other error: resolve as ok:true so dashboard renders its own error state.
++        return { ok: true };
+       }
+     },
+     retry: false,
+diff --git a/frontend/src/mocks/fixtures.ts b/frontend/src/mocks/fixtures.ts
+index 140a6ef..610c923 100644
+--- a/frontend/src/mocks/fixtures.ts
++++ b/frontend/src/mocks/fixtures.ts
+@@ -151,19 +151,191 @@ export const MOCK_CREATE_ORDER: CreateOrderResponse = {
+   total: "469.00",
+ };
+ 
+-export const MOCK_ADMIN_ORDER: AdminOrderDetail = {
+-  id: "order-id-1",
+-  orderNumber: MOCK_ORDER_NUMBER,
+-  customer: { name: "Anjali", phone: "9876543210" },
+-  orderType: "DELIVERY",
+-  status: "NEW",
+-  total: "469.00",
+-  createdAt: new Date().toISOString(),
+-  address: MOCK_INVOICE.address,
+-  notes: "Less spicy",
+-  items: MOCK_INVOICE.items,
+-  statusHistory: [],
+-  subtotal: "439.00",
+-  deliveryFee: "30.00",
+-  tax: "0.00",
+-};
++export const MOCK_ADMIN_ORDERS: AdminOrderDetail[] = [
++  {
++    id: "order-1",
++    orderNumber: "ORD-20260927-001",
++    customer: { name: "Aarav Sharma", phone: "9876543210" },
++    orderType: "DELIVERY",
++    status: "NEW",
++    total: "469.00",
++    subtotal: "439.00",
++    deliveryFee: "30.00",
++    tax: "0.00",
++    createdAt: new Date().toISOString(),
++    address: MOCK_INVOICE.address,
++    notes: "Less spicy, extra napkins please",
++    items: [
++      {
++        nameSnapshot: "Classic Margherita",
++        variantSnapshot: 'Medium (12")',
++        addOnSnapshot: [{ label: "Extra Cheese", price: "40.00" }],
++        quantity: 1,
++        unitPrice: "439.00",
++        lineTotal: "439.00",
++      },
++    ],
++    statusHistory: [],
++  },
++  {
++    id: "order-2",
++    orderNumber: "ORD-20260927-002",
++    customer: { name: "Priya Patel", phone: "9812345678" },
++    orderType: "PICKUP",
++    status: "CONFIRMED",
++    total: "399.00",
++    subtotal: "399.00",
++    deliveryFee: "0.00",
++    tax: "0.00",
++    createdAt: new Date().toISOString(),
++    address: null,
++    notes: "Pack carefully",
++    items: [
++      {
++        nameSnapshot: "Fiery Pepperoni",
++        variantSnapshot: 'Small (8")',
++        addOnSnapshot: [],
++        quantity: 1,
++        unitPrice: "399.00",
++        lineTotal: "399.00",
++      },
++    ],
++    statusHistory: [],
++  },
++  {
++    id: "order-3",
++    orderNumber: "ORD-20260927-003",
++    customer: { name: "Rohan Gupta", phone: "9765432109" },
++    orderType: "DINE_IN",
++    status: "PREPARING",
++    total: "528.00",
++    subtotal: "528.00",
++    deliveryFee: "0.00",
++    tax: "0.00",
++    createdAt: new Date().toISOString(),
++    address: null,
++    notes: "Table 4",
++    items: [
++      {
++        nameSnapshot: "Fiery Pepperoni",
++        variantSnapshot: 'Medium (12")',
++        addOnSnapshot: [],
++        quantity: 1,
++        unitPrice: "528.00",
++        lineTotal: "528.00",
++      },
++    ],
++    statusHistory: [],
++  },
++  {
++    id: "order-4",
++    orderNumber: "ORD-20260927-004",
++    customer: { name: "Ananya Iyer", phone: "9654321098" },
++    orderType: "DELIVERY",
++    status: "READY",
++    total: "757.00",
++    subtotal: "727.00",
++    deliveryFee: "30.00",
++    tax: "0.00",
++    createdAt: new Date().toISOString(),
++    address: MOCK_INVOICE.address,
++    notes: "Ring doorbell twice",
++    items: [
++      {
++        nameSnapshot: "Classic Margherita",
++        variantSnapshot: 'Large (14")',
++        addOnSnapshot: [],
++        quantity: 1,
++        unitPrice: "499.00",
++        lineTotal: "499.00",
++      },
++      {
++        nameSnapshot: "Garlic Butter Dough Balls",
++        variantSnapshot: null,
++        addOnSnapshot: [],
++        quantity: 2,
++        unitPrice: "114.00",
++        lineTotal: "228.00",
++      },
++    ],
++    statusHistory: [],
++  },
++  {
++    id: "order-5",
++    orderNumber: "ORD-20260927-005",
++    customer: { name: "Vikram Singh", phone: "9543210987" },
++    orderType: "DELIVERY",
++    status: "OUT_FOR_DELIVERY",
++    total: "429.00",
++    subtotal: "399.00",
++    deliveryFee: "30.00",
++    tax: "0.00",
++    createdAt: new Date().toISOString(),
++    address: MOCK_INVOICE.address,
++    notes: "Call on arrival",
++    items: [
++      {
++        nameSnapshot: "Classic Margherita",
++        variantSnapshot: 'Medium (12")',
++        addOnSnapshot: [],
++        quantity: 1,
++        unitPrice: "399.00",
++        lineTotal: "399.00",
++      },
++    ],
++    statusHistory: [],
++  },
++  {
++    id: "order-6",
++    orderNumber: "ORD-20260927-006",
++    customer: { name: "Neha Deshmukh", phone: "9432109876" },
++    orderType: "PICKUP",
++    status: "COMPLETED",
++    total: "299.00",
++    subtotal: "299.00",
++    deliveryFee: "0.00",
++    tax: "0.00",
++    createdAt: new Date().toISOString(),
++    address: null,
++    notes: null,
++    items: [
++      {
++        nameSnapshot: "Classic Margherita",
++        variantSnapshot: 'Small (8")',
++        addOnSnapshot: [],
++        quantity: 1,
++        unitPrice: "299.00",
++        lineTotal: "299.00",
++      },
++    ],
++    statusHistory: [],
++  },
++  {
++    id: "order-7",
++    orderNumber: "ORD-20260927-007",
++    customer: { name: "Kabir Mehta", phone: "9321098765" },
++    orderType: "DELIVERY",
++    status: "CANCELLED",
++    total: "429.00",
++    subtotal: "399.00",
++    deliveryFee: "30.00",
++    tax: "0.00",
++    createdAt: new Date().toISOString(),
++    address: MOCK_INVOICE.address,
++    notes: "Customer cancelled",
++    items: [
++      {
++        nameSnapshot: "Fiery Pepperoni",
++        variantSnapshot: 'Small (8")',
++        addOnSnapshot: [],
++        quantity: 1,
++        unitPrice: "399.00",
++        lineTotal: "399.00",
++      },
++    ],
++    statusHistory: [],
++  },
++];
++
++export const MOCK_ADMIN_ORDER: AdminOrderDetail = MOCK_ADMIN_ORDERS[0];
++
+diff --git a/frontend/src/mocks/handlers.ts b/frontend/src/mocks/handlers.ts
+index c4f8ee1..8333005 100644
+--- a/frontend/src/mocks/handlers.ts
++++ b/frontend/src/mocks/handlers.ts
+@@ -1,6 +1,8 @@
+ import { http, HttpResponse } from "msw";
++import type { OrderStatus } from "@shared/contract/contract";
+ import {
+   MOCK_ADMIN_ORDER,
++  MOCK_ADMIN_ORDERS,
+   MOCK_CATEGORIES,
+   MOCK_CREATE_ORDER,
+   MOCK_INVOICE,
+@@ -89,6 +91,23 @@ function priceQuote(lines: QuoteLine[], orderType: string) {
+   };
+ }
+ 
++function hasAuthSession(cookies: Record<string, string>, request: Request): boolean {
++  const cookieHeader = request.headers.get("cookie") || "";
++  // Check for cookies set by the real backend or our previous mock implementation
++  return Boolean(
++    cookies["__Host-admin_access"] ||
++    cookies["admin_session"] ||
++    cookies["admin_refresh"] ||
++    cookieHeader.includes("admin_access") ||
++    cookieHeader.includes("admin_session") ||
++    cookieHeader.includes("admin_refresh")
++  );
++}
++
++// Auth handlers (auth/login, auth/refresh, auth/logout) are intentionally
++// NOT mocked ΓÇö they bypass MSW and hit the real backend at localhost:4000.
++// MSW onUnhandledRequest:"bypass" routes them through automatically.
++
+ export const handlers = [
+   // ---- Public menu ----
+   http.get(`${API}/menu`, () => ok({ categories: MOCK_CATEGORIES })),
+@@ -152,30 +171,38 @@ export const handlers = [
+     return ok({ ...MOCK_ORDER, publicToken: String(params.publicToken) });
+   }),
+ 
+-  // ---- Auth (cookie-based, no token in body) ----
+-  http.post(`${API}/auth/login`, async ({ request }) => {
+-    const body = (await request.json()) as { email?: string; password?: string };
+-    if (body.email === "admin@pokketpizza.com" && (body.password || "").length >= 8) {
+-      return ok({
+-        admin: { id: "a1", name: "Pokket Admin", email: "admin@pokketpizza.com", role: "OWNER" },
+-      });
++  // auth/login, auth/refresh, auth/logout ΓåÆ bypassed to real backend (no handler here)
++
++  // ---- Admin orders (mocked ΓÇö real backend endpoint not yet built) ----
++  http.get(`${API}/admin/orders`, ({ request }) => {
++    const url = new URL(request.url);
++    const statusParam = url.searchParams.get("status");
++    const typeParam = url.searchParams.get("type");
++    let list = [...MOCK_ADMIN_ORDERS];
++    if (statusParam) {
++      list = list.filter((o) => o.status === statusParam);
+     }
+-    return fail("AUTHENTICATION_INVALID", "Invalid email or password.", 401);
++    if (typeParam) {
++      list = list.filter((o) => o.orderType === typeParam);
++    }
++    return ok(list);
+   }),
+-
+-  http.post(`${API}/auth/refresh`, () => ok({ admin: { id: "a1", name: "Pokket Admin", email: "admin@pokketpizza.com", role: "OWNER" } })),
+-  http.post(`${API}/auth/logout`, () => ok({})),
+-
+-  // ---- Admin orders ----
+-  http.get(`${API}/admin/orders`, () => ok([MOCK_ADMIN_ORDER])),
+-  http.get(`${API}/admin/orders/:id`, () => ok(MOCK_ADMIN_ORDER)),
+-  http.patch(`${API}/admin/orders/:id/status`, async ({ request }) => {
+-    const body = (await request.json()) as { status?: string };
+-    const allowed = ["NEW", "CONFIRMED", "PREPARING", "READY", "OUT_FOR_DELIVERY", "COMPLETED", "CANCELLED"];
++  http.get(`${API}/admin/orders/:id`, ({ params }) => {
++    const found = MOCK_ADMIN_ORDERS.find((o) => o.id === params.id) ?? MOCK_ADMIN_ORDERS[0];
++    return ok(found);
++  }),
++  http.patch(`${API}/admin/orders/:id/status`, async ({ request, params }) => {
++    const body = (await request.json()) as { status?: OrderStatus };
++    const allowed: OrderStatus[] = ["NEW", "CONFIRMED", "PREPARING", "READY", "OUT_FOR_DELIVERY", "COMPLETED", "CANCELLED"];
+     if (!body.status || !allowed.includes(body.status)) {
+       return fail("ORDER_INVALID_TRANSITION", "Invalid status transition.", 400);
+     }
+-    return ok({ ...MOCK_ADMIN_ORDER, status: body.status });
++    const order = MOCK_ADMIN_ORDERS.find((o) => o.id === params.id);
++    if (order && body.status) {
++      order.status = body.status;
++    }
++    const result = order ?? { ...MOCK_ADMIN_ORDERS[0], status: body.status };
++    return ok(result);
+   }),
+ 
+   // ---- Admin menu (soft toggle only, no DELETE) ----

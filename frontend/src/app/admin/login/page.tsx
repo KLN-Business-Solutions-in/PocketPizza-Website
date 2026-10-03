@@ -55,12 +55,12 @@ function LoginForm() {
   };
 
   return (
-    <div className="mx-auto max-w-md py-12">
+    <div className="mx-auto w-full max-w-md px-4 py-12 sm:px-0">
       <h1 className="text-h2 font-heading font-bold">Admin Login</h1>
       <p className="mt-1 text-body text-bodySecondary">
         Cookie-based session. Never store tokens in localStorage.
       </p>
-      <Card className="mt-6">
+      <Card className="mt-6 w-full rounded-md border border-border-default shadow-card">
         <form onSubmit={submit} className="space-y-4">
           <Input
             label="Email"

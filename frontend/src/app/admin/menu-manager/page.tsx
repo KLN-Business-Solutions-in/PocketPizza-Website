@@ -67,15 +67,17 @@ export default function MenuManagerPage() {
   };
 
   return (
-    <div className="space-y-6 pb-12">
-      <h1 className="text-h2 font-heading font-bold">Menu Manager</h1>
-      <p className="text-body text-bodySecondary">
-        Soft toggle only — products are never deleted so historical orders stay intact.
-      </p>
+    <div className="min-w-0 space-y-5 pb-12 sm:space-y-6">
+      <div className="min-w-0">
+        <h1 className="break-words text-h2 font-heading font-bold">Menu Manager</h1>
+        <p className="mt-1 break-words text-body text-bodySecondary">
+          Soft toggle only — products are never deleted so historical orders stay intact.
+        </p>
+      </div>
 
-      <Card>
+      <Card className="min-w-0 p-4 sm:p-6">
         <h2 className="font-heading font-bold">New product</h2>
-        <form onSubmit={submit} className="mt-3 grid gap-3 md:grid-cols-2">
+        <form onSubmit={submit} className="mt-3 grid min-w-0 gap-3 md:grid-cols-2">
           <Input label="Name" value={name} onChange={(e) => setName(e.target.value)} required maxLength={255} />
           <Input
             label="Category ID"
@@ -91,12 +93,12 @@ export default function MenuManagerPage() {
             placeholder="299.00"
             required
           />
-          <label className="flex items-center gap-2 text-body">
+          <label className="flex min-w-0 items-center gap-2 text-body">
             <input type="checkbox" checked={isVeg} onChange={(e) => setIsVeg(e.target.checked)} />
             Vegetarian
           </label>
           <div className="md:col-span-2">
-            <Button type="submit" isLoading={createProduct.isPending}>
+            <Button type="submit" className="w-full sm:w-auto" isLoading={createProduct.isPending}>
               Create product
             </Button>
           </div>
@@ -111,9 +113,9 @@ export default function MenuManagerPage() {
       {menu.isError && <ErrorState message="Failed to load admin menu." onRetry={() => menu.refetch()} />}
 
       {(menu.data?.categories ?? []).map((cat) => (
-        <Card key={cat.id}>
-          <h2 className="font-heading font-bold">
-            {cat.name} <span className="text-caption text-mutedGray">({cat.id})</span>
+        <Card key={cat.id} className="min-w-0 p-4 sm:p-6">
+          <h2 className="break-words font-heading font-bold">
+            {cat.name} <span className="break-all text-caption text-mutedGray">({cat.id})</span>
           </h2>
           <ul className="mt-2 space-y-2">
             {cat.items.map((it) => (
@@ -177,33 +179,33 @@ function ProductRow({
   };
 
   return (
-    <li className="flex flex-wrap items-center justify-between gap-2 border-t py-2 text-body">
-      <span>
+    <li className="flex min-w-0 flex-col items-stretch gap-3 border-t border-border-default py-3 text-body sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
+      <span className="min-w-0 break-words">
         <span className={isActive ? "" : "line-through text-mutedGray"}>{name}</span>{" "}
         <span className="text-caption text-mutedGray">{formatINR(basePrice)}</span>{" "}
         <span className="text-caption">{isActive ? "● active" : "○ disabled"}</span>
       </span>
-      <span className="flex items-center gap-2">
+      <span className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
         {editing ? (
           <>
-            <Input value={price} onChange={(e) => setPrice(e.target.value)} className="w-28" />
-            <Button size="sm" onClick={save} isLoading={update.isPending}>
+            <Input value={price} onChange={(e) => setPrice(e.target.value)} className="w-28 shrink-0" />
+            <Button size="sm" className="flex-1 whitespace-nowrap sm:flex-none" onClick={save} isLoading={update.isPending}>
               Save
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+            <Button size="sm" className="flex-1 whitespace-nowrap sm:flex-none" variant="ghost" onClick={() => setEditing(false)}>
               Cancel
             </Button>
           </>
         ) : (
-          <Button size="sm" variant="outline" onClick={() => { setPrice(basePrice); setEditing(true); }}>
+          <Button size="sm" className="flex-1 whitespace-nowrap sm:flex-none" variant="outline" onClick={() => { setPrice(basePrice); setEditing(true); }}>
             Edit price
           </Button>
         )}
-        <Button size="sm" variant={isActive ? "danger" : "primary"} onClick={onToggle} disabled={toggling}>
+        <Button size="sm" className="flex-1 whitespace-nowrap sm:flex-none" variant={isActive ? "danger" : "primary"} onClick={onToggle} disabled={toggling}>
           {toggling ? "…" : isActive ? "Disable" : "Enable"}
         </Button>
       </span>
-      {err && <span className="w-full text-caption text-brand-red">{err}</span>}
+      {err && <span className="w-full text-caption text-brand-red sm:basis-full">{err}</span>}
       <span className="hidden">{id}</span>
     </li>
   );
