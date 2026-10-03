@@ -20,13 +20,14 @@ export default function AdminOrderHistoryPage() {
     ...(dateFrom ? { dateFrom } : {}),
     ...(dateTo ? { dateTo } : {}),
     page,
-    pageSize: PAGE_SIZE,
+    pageSize: PAGE_SIZE + 1,
   });
 
   const list: AdminOrderSummary[] = Array.isArray(orders.data)
     ? orders.data
     : orders.data?.items ?? [];
-  const hasNextPage = list.length === PAGE_SIZE;
+  const hasNextPage = list.length > PAGE_SIZE;
+  const visibleList = list.slice(0, PAGE_SIZE);
 
   return (
     <div className="min-w-0 space-y-5 pb-12 sm:space-y-6">
@@ -87,7 +88,7 @@ export default function AdminOrderHistoryPage() {
           message="Could not load order history."
           onRetry={() => orders.refetch()}
         />
-      ) : list.length === 0 ? (
+      ) : visibleList.length === 0 ? (
         <Card className="p-4 sm:p-6">
           <p className="py-4 text-center text-body text-bodySecondary">
             No orders match these filters.
@@ -107,7 +108,7 @@ export default function AdminOrderHistoryPage() {
               </tr>
             </thead>
             <tbody>
-              {list.map((order) => (
+              {visibleList.map((order) => (
                 <tr key={order.id} className="border-t border-border-default">
                   <td className="whitespace-nowrap px-4 py-3 font-semibold">
                     <Link
