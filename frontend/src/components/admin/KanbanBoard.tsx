@@ -142,7 +142,7 @@ export function KanbanBoard({
                           onSelectOrder?.(order.id);
                         }}
                         className={`group relative flex flex-col gap-2 rounded-lg border bg-white p-3 shadow-sm transition-all hover:shadow-md cursor-pointer ${
-                          isSelected ? "ring-2 ring-brand-red border-transparent" : "border-gray-200"
+                          isSelected ? "border-brand-red" : "border-gray-200"
                         }`}
                       >
                         {/* Order Header: Number & Time */}
@@ -168,7 +168,7 @@ export function KanbanBoard({
 
                         {/* Transition Buttons */}
                         {transitions.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 pt-2 border-t border-gray-100 mt-1">
+                          <div className="grid grid-cols-1 gap-2 border-t border-gray-100 pt-2 mt-1">
                             {transitions.map((next) => {
                               const isCancel = next === "CANCELLED";
                               return (
@@ -179,13 +179,13 @@ export function KanbanBoard({
                                   disabled={isUpdating || updatingId === order.id}
                                   isLoading={updatingId === order.id}
                                   onClick={(e) => handleTransition(order.id, next, e)}
-                                  className={`flex-1 text-xs py-1 px-2 h-7 ${
+                                  className={`h-auto min-h-7 w-full min-w-0 whitespace-normal break-words px-2 py-1 text-center text-xs leading-tight ${
                                     !isCancel
                                       ? "bg-brand-red text-white hover:bg-red-700 border-brand-red"
                                       : ""
                                   }`}
                                 >
-                                  → {next.replaceAll("_", " ")}
+                                  {next.replaceAll("_", " ")}
                                 </Button>
                               );
                             })}
