@@ -146,6 +146,10 @@ model Customer {
   email        String? @unique
   passwordHash String?
 
+  whatsappOrderUpdates  Boolean @default(true)
+  whatsappStatusUpdates Boolean @default(true)
+  theme                 String  @default("system")
+
   addresses Address[]
   orders    Order[]
 
