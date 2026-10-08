@@ -3,6 +3,10 @@
 import React from "react";
 import { usePathname } from "next/navigation";
 import { useSiteContent } from "@/lib/api/site";
+import {
+  getWhatsAppPrefill,
+  subscribeWhatsAppPrefill,
+} from "@/lib/whatsapp-prefill";
 
 /**
  * Floating tap-to-chat WhatsApp action (customer pages).
@@ -10,7 +14,9 @@ import { useSiteContent } from "@/lib/api/site";
  * - The number comes from restaurant config (GET /restaurant) — never a
  *   hardcoded literal; whatsappNumber falls back to the shop phone.
  * - Real anchor with target="_blank" rel="noopener noreferrer", built with
- *   encodeURIComponent — no JS click handler.
+ *   encodeURIComponent — no JS click handler. Pages with an order in view
+ *   push an order-number prefill via setWhatsAppPrefill; otherwise the
+ *   generic fallback text is used.
  * - Hidden on /checkout so it can never cover the checkout submit button at
  *   375px, and on /admin where it has no business.
  * - Bottom offset adds env(safe-area-inset-bottom) so it clears the iOS
@@ -31,13 +37,18 @@ function toWaDigits(raw: string | null | undefined): string | null {
 export default function WhatsAppFab() {
   const pathname = usePathname() ?? "";
   const site = useSiteContent();
+  const prefill = React.useSyncExternalStore(
+    subscribeWhatsAppPrefill,
+    getWhatsAppPrefill,
+    () => null,
+  );
 
   if (pathname.startsWith("/checkout") || pathname.startsWith("/admin")) return null;
 
   const number = toWaDigits(site.data?.whatsappNumber ?? site.data?.phone);
   if (!number) return null;
 
-  const text = encodeURIComponent("Hi! I have a question about my order.");
+  const text = encodeURIComponent(prefill ?? "Hi! I have a question about my order.");
   return (
     <a
       href={`https://wa.me/${number}?text=${text}`}

@@ -14,6 +14,7 @@ import {
 } from "@/lib/order/status";
 import { formatINR } from "@/lib/money";
 import { maskIndianPhone } from "@/lib/phone";
+import { setWhatsAppPrefill } from "@/lib/whatsapp-prefill";
 import { Button } from "@/components/ui/Button";
 import { Card, ErrorState } from "@/components/ui/LayoutPrimitives";
 import { MenuSkeleton } from "@/components/menu/MenuSkeleton";
@@ -40,6 +41,15 @@ export default function OrderPage() {
   const invoice = useInvoice(publicToken);
   const { push } = useToast();
   const [linkCopied, setLinkCopied] = React.useState(false);
+
+  // Order in view → prefills the floating WhatsApp action with the order
+  // number (issue #42). Cleanup restores the generic text on navigation.
+  const orderNumber = order.data?.orderNumber ?? null;
+  React.useEffect(() => {
+    if (!orderNumber) return;
+    setWhatsAppPrefill(`Hi! I have a question about order ${orderNumber}.`);
+    return () => setWhatsAppPrefill(null);
+  }, [orderNumber]);
 
   const share = React.useCallback(async () => {
     const url = window.location.href;
