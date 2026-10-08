@@ -14,11 +14,14 @@ const envSchema = z.object({
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().default(30),
   COOKIE_DOMAIN: z.string().optional().default(''),
   CORS_ORIGIN: z.string().min(1, 'CORS_ORIGIN is required'),
-  WHATSAPP_BSP_URL: z.string().optional().default(''),
-  WHATSAPP_API_KEY: z.string().optional().default(''),
-  WHATSAPP_SENDER_ID: z.string().optional().default(''),
-  WHATSAPP_CUSTOMER_TEMPLATE: z.string().default('order_confirmation'),
-  WHATSAPP_SHOP_TEMPLATE: z.string().default('new_order_alert'),
+  // Twilio WhatsApp (Content API). Empty values are allowed so the server can
+  // boot without credentials — sends then fail cleanly and are logged, and the
+  // status webhook reports WEBHOOK_NOT_CONFIGURED until AUTH_TOKEN is set.
+  TWILIO_ACCOUNT_SID: z.string().optional().default(''),
+  TWILIO_AUTH_TOKEN: z.string().optional().default(''),
+  TWILIO_WHATSAPP_NUMBER: z.string().optional().default(''),
+  CUSTOMER_TEMPLATE_SID: z.string().optional().default(''),
+  ADMIN_TEMPLATE_SID: z.string().optional().default(''),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 });
 

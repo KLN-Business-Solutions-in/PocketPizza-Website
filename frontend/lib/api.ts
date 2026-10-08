@@ -82,16 +82,23 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
 
   const errorEnvelope = json as ErrorEnvelope;
   const requestId = errorEnvelope?.requestId ?? "N/A";
-  console.error(`[API Client] Request Error [requestId: ${requestId}]:`, {
-    code: errorEnvelope?.error?.code,
-    message: errorEnvelope?.error?.message,
+  const code = errorEnvelope?.error?.code ?? "INTERNAL_ERROR";
+  const message = errorEnvelope?.error?.message || `Request failed (HTTP ${res.status}).`;
+  const logPayload = {
+    code,
+    message,
     details: errorEnvelope?.error?.details,
     status: res.status,
     url,
-  });
+  };
 
-  const code = errorEnvelope?.error?.code ?? "INTERNAL_ERROR";
-  const message = errorEnvelope?.error?.message || `Request failed (HTTP ${res.status}).`;
+  // 401s are an expected outcome (e.g. the admin session probe before login)
+  // and are handled by callers, so they must not surface as console errors.
+  if (res.status === 401) {
+    console.warn(`[API Client] Request rejected [requestId: ${requestId}]:`, logPayload);
+  } else {
+    console.error(`[API Client] Request Error [requestId: ${requestId}]:`, logPayload);
+  }
 
   // Global 401 Interceptor: If we get a genuine authentication failure from any admin API call,
   // we perform a hard redirect to the login page. A hard redirect (window.location.href) 

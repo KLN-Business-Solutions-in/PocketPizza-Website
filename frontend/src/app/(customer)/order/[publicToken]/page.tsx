@@ -13,6 +13,7 @@ import {
   statusLabel,
 } from "@/lib/order/status";
 import { formatINR } from "@/lib/money";
+import { maskIndianPhone } from "@/lib/phone";
 import { Button } from "@/components/ui/Button";
 import { Card, ErrorState } from "@/components/ui/LayoutPrimitives";
 import { MenuSkeleton } from "@/components/menu/MenuSkeleton";
@@ -116,14 +117,39 @@ export default function OrderPage() {
         )}
       </Card>
 
-      {/* The sprint's promise. The backend sends this after the order commits and
-          its failure never cancels the order, so it is safe to state here. */}
+      {/* Honest WhatsApp state (Day 9): never claim a message was sent when
+          the provider failed, and never let a failed send imply the order is
+          anything but confirmed. `whatsapp` is null only while dispatch is
+          still in flight (or for pre-Day-9 orders). */}
       {!cancelled && (
-        <p className="flex items-start gap-2 text-body text-bodySecondary">
+        <p
+          className={`flex items-start gap-2 text-body ${
+            o.whatsapp?.status === "failed" ? "text-brand-red" : "text-bodySecondary"
+          }`}
+        >
           <span aria-hidden="true">💬</span>
           <span>
-            A WhatsApp confirmation with your order details is on its way to{" "}
-            {invoice.data?.customer.phone ?? "your number"}.
+            {o.whatsapp?.status === "failed"
+              ? "We couldn't send the WhatsApp confirmation. Your order is confirmed and unaffected."
+              : o.whatsapp?.status === "skipped"
+                ? "WhatsApp updates are turned off for your account, so no confirmation was sent. Your order is confirmed."
+                : o.whatsapp?.status === "sent"
+                  ? <>
+                      WhatsApp confirmation sent to{" "}
+                      <span className="font-semibold text-charcoal">
+                        {o.whatsapp.destinationMasked ??
+                          maskIndianPhone(invoice.data?.customer.phone) ??
+                          "your number"}
+                      </span>
+                      .
+                    </>
+                  : <>
+                      A WhatsApp confirmation with your order details is on its way to{" "}
+                      <span className="font-semibold text-charcoal">
+                        {maskIndianPhone(invoice.data?.customer.phone) ?? "your number"}
+                      </span>
+                      .
+                    </>}
           </span>
         </p>
       )}

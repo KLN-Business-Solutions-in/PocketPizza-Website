@@ -6,6 +6,7 @@ import type {
   CreateOrderResponse,
   InvoiceResponse,
   OrderStatusResponse,
+  OrderWhatsappState,
   QuoteRequest,
   QuoteResponse,
   UpdateStatusRequest,
@@ -15,6 +16,12 @@ import { randomBytes } from 'crypto';
 import { AppError, ConflictError, NotFoundError, ValidationError } from '../../utils/errors';
 import { normalizeIndianPhone } from '../../utils/phone';
 import { toFixed2 } from '../../utils/decimal';
+import {
+  CUSTOMER_CONFIRMATION_TEMPLATE,
+  dispatchOrderNotifications,
+  mapNotificationStatusToPublic,
+  maskDestination,
+} from '../notifications/notification.service';
 import {
   expireOldIdempotencyKeys,
   findAdminOrderDetail,
@@ -264,6 +271,18 @@ export async function createOrder(input: CreateOrderRequest): Promise<{
         total: quote.total,
         items: orderItems,
       });
+      // Post-commit, fire-and-forget (Day 9): both WhatsApp messages dispatch
+      // AFTER the transaction commits, are never awaited by this request, and
+      // cannot roll back or invalidate the order that was just created.
+      dispatchOrderNotifications({
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        customerPhone: phone,
+        orderType: input.orderType,
+        total: toFixed2(order.total.toString()),
+        items: order.items.map((i) => ({ nameSnapshot: i.nameSnapshot, quantity: i.quantity })),
+        restaurantId: restaurant.id,
+      });
       return { data: toCreateResponse(order), created: true };
     } catch (err) {
       if (isP2002(err) && p2002Target(err).includes('idempotencyKey')) {
@@ -318,6 +337,16 @@ function parseStoredAddress(raw: string | null): InvoiceResponse['address'] {
   }
 }
 
+/** Customer confirmation state for the public status API — masked destination only. */
+function toWhatsappState(row: OrderRow): OrderWhatsappState | null {
+  const attempt = row.notifications.find((n) => n.template === CUSTOMER_CONFIRMATION_TEMPLATE);
+  if (!attempt) return null;
+  return {
+    status: mapNotificationStatusToPublic(attempt.status),
+    destinationMasked: maskDestination(attempt.destination),
+  };
+}
+
 export async function getOrderStatus(publicToken: string): Promise<OrderStatusResponse> {
   const row = await findOrderByToken(publicToken);
   if (!row) throw new NotFoundError('Order');
@@ -333,6 +362,7 @@ export async function getOrderStatus(publicToken: string): Promise<OrderStatusRe
     total: toFixed2(row.total.toString()),
     notes: row.notes,
     createdAt: row.createdAt.toISOString(),
+    whatsapp: toWhatsappState(row),
   };
 }
 

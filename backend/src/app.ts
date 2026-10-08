@@ -17,6 +17,7 @@ import { requireAdmin } from './middleware/auth.middleware';
 import { adminRouter } from './modules/admin/admin.routes';
 import { orderRouter } from './modules/orders/order.routes';
 import { restaurantRouter } from './modules/restaurant/restaurant.routes';
+import { twilioWebhookRouter } from './modules/notifications/notification.routes';
 
 // access logs must never carry capability tokens: publicToken sits in the
 // path (/orders/:token[/invoice]) and legacy links put it in ?token=
@@ -121,6 +122,8 @@ app.use('/api/v1/admin', requireAdmin, adminRouter);
 app.use('/api/v1', menuRouter);
 app.use('/api/v1', orderRouter);
 app.use('/api/v1', restaurantRouter);
+// Twilio status callbacks live outside /api/v1 and are signed, not cookie-authed
+app.use('/api/webhooks', twilioWebhookRouter);
 
 app.use(notFoundHandler);
 
