@@ -35,6 +35,16 @@ Database connection strings are secrets and must never be committed to Git or sh
 - These columns are customer-facing only. `deliveryFee`, `AdminUser` fields and
   anything else non-public must never be added to this endpoint's select list.
 
+## Customer Preferences
+
+`Customer` stores the persisted preferences used by the customer settings experience.
+
+- `whatsappOrderUpdates` — `Boolean`, defaults to `true`.
+- `whatsappStatusUpdates` — `Boolean`, defaults to `true`.
+- `theme` — `String`, defaults to `"system"`; supported application values are `light`, `dark`, and `system`.
+- Explicit defaults ensure existing customers and customers who have not changed their settings receive predictable preference values.
+- WhatsApp preferences must be respected by the Backend notification flow when deciding whether customer notifications should be sent.
+
 ## Admin Password Storage
 
 Admin passwords are never stored as plaintext.
