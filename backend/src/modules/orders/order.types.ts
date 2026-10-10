@@ -7,6 +7,15 @@ export type ResolvedQuoteLine = {
   input: QuoteLineInput;
   name: string;
   basePrice: Prisma.Decimal;
-  variant: { label: string; priceDelta: Prisma.Decimal } | null;
-  addOns: { label: string; price: Prisma.Decimal }[];
+  taxRate: Prisma.Decimal;
+  variant: {
+    label: string;
+    priceDelta: Prisma.Decimal;
+    taxRate: Prisma.Decimal;
+  } | null;
+  addOns: {
+    label: string;
+    price: Prisma.Decimal;
+    taxRate: Prisma.Decimal;
+  }[];
 };

@@ -68,13 +68,19 @@ export async function resolveCart(input: {
         details.push(`items[${index}]: invalid variant for "${item.name}"`);
         return;
       }
-      variant = { label: match.label, priceDelta: match.priceDelta };
+      variant = {
+        label: match.label,
+        priceDelta: match.priceDelta,
+        taxRate: match.taxRate,
+      };
     }
 
     const addOns: ResolvedQuoteLine['addOns'] = [];
     let lineOk = true;
+
     for (const addOnId of line.addOnIds) {
       const match = item.addOns.find((addOn) => addOn.id === addOnId);
+
       if (!match) {
         details.push(
           `items[${index}]: invalid add-on "${addOnId}" for "${item.name}"`,
@@ -82,14 +88,21 @@ export async function resolveCart(input: {
         lineOk = false;
         continue;
       }
-      addOns.push({ label: match.label, price: match.price });
+
+      addOns.push({
+        label: match.label,
+        price: match.price,
+        taxRate: match.taxRate,
+      });
     }
+
     if (!lineOk) return;
 
     resolved.push({
       input: line,
       name: item.name,
       basePrice: item.basePrice,
+      taxRate: item.taxRate,
       variant,
       addOns,
     });

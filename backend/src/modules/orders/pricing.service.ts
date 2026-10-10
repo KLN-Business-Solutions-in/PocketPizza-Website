@@ -28,8 +28,34 @@ export function computeQuote(
     (acc, p) => acc.plus(p.lineTotal),
     new Prisma.Decimal(0),
   );
+
   const fee = orderType === 'DELIVERY' ? deliveryFee : new Prisma.Decimal(0);
-  const tax = new Prisma.Decimal(0);
+
+  const tax = priced.reduce(
+    (acc, p) => {
+      const quantity = new Prisma.Decimal(p.line.input.quantity);
+      const componentTax = (price: Prisma.Decimal, taxRate: Prisma.Decimal) =>
+        price
+          .times(taxRate)
+          .dividedBy(100)
+          .times(quantity)
+          .toDecimalPlaces(2);
+
+      let lineTax = componentTax(p.line.basePrice, p.line.taxRate);
+      if (p.line.variant) {
+        lineTax = lineTax.plus(
+          componentTax(p.line.variant.priceDelta, p.line.variant.taxRate),
+        );
+      }
+      for (const addOn of p.line.addOns) {
+        lineTax = lineTax.plus(componentTax(addOn.price, addOn.taxRate));
+      }
+
+      return acc.plus(lineTax);
+    },
+    new Prisma.Decimal(0),
+  );
+
   const total = subtotal.plus(fee).plus(tax);
 
   const items: QuoteItem[] = priced.map(({ line, unit, lineTotal }) => ({
