@@ -145,7 +145,15 @@ export async function findOrderByToken(publicToken: string) {
   const prisma = await getPrisma();
   return prisma.order.findUnique({
     where: { publicToken },
-    include: { items: true, customer: true },
+    include: {
+      items: true,
+      customer: true,
+      notifications: {
+        where: { channel: 'whatsapp' },
+        orderBy: { createdAt: 'desc' },
+        select: { template: true, status: true, destination: true, createdAt: true },
+      },
+    },
   });
 }
 

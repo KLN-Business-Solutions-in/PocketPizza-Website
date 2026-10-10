@@ -2,9 +2,11 @@ import { app } from './app';
 import { env } from './config/env';
 import { logger } from './utils/logger';
 import { getPrisma } from './config/database';
+import { logDispatchConfig } from './modules/notifications/notification.service';
 
 const server = app.listen(env.PORT, () => {
   logger.info({ port: env.PORT, env: env.NODE_ENV }, 'Server started');
+  logDispatchConfig();
 });
 
 let shuttingDown = false;

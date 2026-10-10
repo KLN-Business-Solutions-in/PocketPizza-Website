@@ -218,6 +218,19 @@ export type CreateOrderResponse = {
 };
 
 // 7. ORDERS — Status & Invoice
+/**
+ * Honest state of the customer-facing WhatsApp confirmation for an order.
+ * - pending:  dispatch in flight (no attempt row recorded yet)
+ * - sent:     provider accepted the message
+ * - failed:   every attempt failed; the order itself is unaffected
+ * - skipped:  intentionally not sent (customer opted out of WhatsApp updates)
+ */
+export type OrderWhatsappState = {
+  status: 'pending' | 'sent' | 'failed' | 'skipped';
+  /** "+91 •••••• 3210" — never the raw number over the wire. */
+  destinationMasked: string | null;
+};
+
 export type OrderStatusResponse = {
   orderNumber: string;
   publicToken: string;
@@ -230,6 +243,8 @@ export type OrderStatusResponse = {
   total: string;
   notes: string | null;
   createdAt: string;
+  /** Absent/undefined only for pre-Day-9 orders with no notification rows. */
+  whatsapp?: OrderWhatsappState | null;
 };
 
 export type InvoiceItem = {
