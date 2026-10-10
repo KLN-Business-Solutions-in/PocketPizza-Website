@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "ItemAddOn" ADD COLUMN     "taxRate" DECIMAL(5,2) NOT NULL DEFAULT 0.00;
+
+-- AlterTable
+ALTER TABLE "ItemVariant" ADD COLUMN     "taxRate" DECIMAL(5,2) NOT NULL DEFAULT 0.00;
