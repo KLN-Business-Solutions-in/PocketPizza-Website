@@ -50,52 +50,43 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen bg-cream-bg flex flex-col">
       {/* Top Admin Navigation Header */}
-      <header className="sticky top-0 z-40 border-b border-border-default bg-white shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-3 py-3 sm:h-16 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:py-0">
-            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-8">
-              <Link href="/admin/dashboard" className="flex shrink-0 items-center gap-2">
-                <span className="font-heading font-extrabold text-xl text-brand-red">
-                  Pokket Pizza
-                </span>
-                <span className="rounded bg-brand-red/10 px-2 py-0.5 text-xs font-bold text-brand-red">
-                  Admin
-                </span>
-              </Link>
-              <nav className="-mx-1 flex max-w-full items-center gap-1 overflow-x-auto px-1 pb-1 sm:mx-0 sm:pb-0">
-                {navItems.map((item) => {
-                  const isActive = pathname === item.href;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`shrink-0 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                        isActive
-                          ? "bg-brand-red/10 text-brand-red font-semibold"
-                          : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                      }`}
-                    >
-                      {item.label}
-                    </Link>
-                  );
-                })}
-              </nav>
-            </div>
-
-            <div className="flex shrink-0 items-center justify-between gap-3 sm:justify-end sm:gap-4">
-              <span className="text-xs text-gray-500 font-medium hidden sm:inline-block">
-                Logged in as <strong className="text-gray-800">Admin</strong>
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleLogout}
-                isLoading={logout.isPending}
-                className="text-xs"
-              >
-                Logout
-              </Button>
-            </div>
+      <header className="sticky top-0 z-40 border-b border-border-default bg-white shadow-card">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 sm:px-6 lg:px-8">
+          <Link href="/admin/dashboard" className="flex shrink-0 items-center">
+            <span className="font-heading text-xl font-extrabold tracking-tight text-brand-red">
+              Pokket Pizza
+            </span>
+          </Link>
+          <nav className="order-3 -mx-1 flex min-w-0 basis-full items-center gap-1 overflow-x-auto px-1 pb-1 sm:order-none sm:mx-0 sm:basis-auto sm:overflow-visible sm:pb-0">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`shrink-0 whitespace-nowrap rounded-full px-3 py-2 text-caption font-semibold transition-colors ${
+                    isActive
+                      ? "bg-brand-red text-white"
+                      : "text-bodySecondary hover:bg-neutralTint hover:text-charcoal"
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+          <div className="flex shrink-0 items-center gap-3">
+            <span className="hidden text-caption font-medium text-bodySecondary sm:inline-block">
+              Logged in as <strong className="text-charcoal">Admin</strong>
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLogout}
+              isLoading={logout.isPending}
+            >
+              Logout
+            </Button>
           </div>
         </div>
       </header>

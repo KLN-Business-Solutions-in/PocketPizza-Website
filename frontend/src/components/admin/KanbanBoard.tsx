@@ -3,7 +3,7 @@
 import React from "react";
 import type { OrderStatus, OrderType } from "@shared/contract/contract";
 import { formatINR } from "@/lib/money";
-import { Button } from "@/components/ui/Button";
+import { getOrderTransitions, OrderActionButton } from "@/components/admin/OrderActionButton";
 
 export type KanbanOrder = {
   id: string;
@@ -16,7 +16,11 @@ export type KanbanOrder = {
   status: OrderStatus;
   total: string;
   createdAt: string;
-  items?: Array<{ quantity: number }>;
+  items?: Array<{
+    quantity: number;
+    nameSnapshot?: string;
+    variantSnapshot?: string | null;
+  }>;
 };
 
 interface KanbanBoardProps {
@@ -25,54 +29,17 @@ interface KanbanBoardProps {
   selectedId?: string | null;
   onUpdateStatus?: (id: string, status: OrderStatus) => Promise<void> | void;
   isUpdating?: boolean;
+  emptyMessage?: string;
 }
 
-const KANBAN_COLUMNS: { status: OrderStatus; label: string; headerBg: string; badgeColor: string }[] = [
-  { status: "NEW", label: "New", headerBg: "bg-amber-100 text-amber-900 border-amber-300", badgeColor: "bg-amber-500 text-white" },
-  { status: "CONFIRMED", label: "Confirmed", headerBg: "bg-blue-100 text-blue-900 border-blue-300", badgeColor: "bg-blue-500 text-white" },
-  { status: "PREPARING", label: "Preparing", headerBg: "bg-purple-100 text-purple-900 border-purple-300", badgeColor: "bg-purple-500 text-white" },
-  { status: "READY", label: "Ready", headerBg: "bg-teal-100 text-teal-900 border-teal-300", badgeColor: "bg-teal-500 text-white" },
-  { status: "OUT_FOR_DELIVERY", label: "Out for Delivery", headerBg: "bg-sky-100 text-sky-900 border-sky-300", badgeColor: "bg-sky-500 text-white" },
-  { status: "COMPLETED", label: "Completed", headerBg: "bg-emerald-100 text-emerald-900 border-emerald-300", badgeColor: "bg-emerald-500 text-white" },
-  { status: "CANCELLED", label: "Cancelled", headerBg: "bg-rose-100 text-rose-900 border-rose-300", badgeColor: "bg-rose-500 text-white" },
-];
-
-/**
- * Mirror allow-list rules per Day 8 specification:
- * - NEW: [CONFIRMED, CANCELLED]
- * - CONFIRMED: [PREPARING, CANCELLED]
- * - PREPARING: [READY, CANCELLED]
- * - READY: [OUT_FOR_DELIVERY (if DELIVERY), COMPLETED (if not DELIVERY), CANCELLED]
- * - OUT_FOR_DELIVERY: [COMPLETED, CANCELLED]
- * - COMPLETED: []
- * - CANCELLED: []
- */
-function getValidTransitions(status: OrderStatus, orderType: OrderType): OrderStatus[] {
-  switch (status) {
-    case "NEW":
-      return ["CONFIRMED", "CANCELLED"];
-    case "CONFIRMED":
-      return ["PREPARING", "CANCELLED"];
-    case "PREPARING":
-      return ["READY", "CANCELLED"];
-    case "READY":
-      if (orderType === "DELIVERY") {
-        return ["OUT_FOR_DELIVERY", "CANCELLED"];
-      }
-      return ["COMPLETED", "CANCELLED"];
-    case "OUT_FOR_DELIVERY":
-      return ["COMPLETED", "CANCELLED"];
-    case "COMPLETED":
-    case "CANCELLED":
-    default:
-      return [];
-  }
-}
-
-function formatTime(isoString: string): string {
+function formatTimeAgo(isoString: string): string {
   try {
-    const d = new Date(isoString);
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const minutes = Math.max(0, Math.floor((Date.now() - new Date(isoString).getTime()) / 60_000));
+    if (minutes < 1) return "Just now";
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    return `${Math.floor(hours / 24)}d ago`;
   } catch {
     return "--:--";
   }
@@ -84,6 +51,7 @@ export function KanbanBoard({
   selectedId,
   onUpdateStatus,
   isUpdating,
+  emptyMessage = "No orders",
 }: KanbanBoardProps) {
   const [updatingId, setUpdatingId] = React.useState<string | null>(null);
 
@@ -98,108 +66,83 @@ export function KanbanBoard({
     }
   };
 
-  return (
-    <div className="w-full overflow-x-auto pb-4">
-      <div className="flex gap-4 min-w-[1200px]">
-        {KANBAN_COLUMNS.map((col) => {
-          const columnOrders = orders.filter((o) => o.status === col.status);
-          return (
-            <div
-              key={col.status}
-              className="flex-1 min-w-[240px] max-w-[300px] flex flex-col rounded-xl border bg-gray-50/50 p-3 shadow-sm"
-            >
-              {/* Column Header */}
-              <div className={`flex items-center justify-between px-3 py-2 rounded-lg border font-heading font-semibold text-caption mb-3 ${col.headerBg}`}>
-                <span>{col.label}</span>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${col.badgeColor}`}>
-                  {columnOrders.length}
-                </span>
-              </div>
+  const renderOrderCard = (order: KanbanOrder) => {
+    const isSelected = selectedId === order.id;
+    const transitions = getOrderTransitions(order.status, order.orderType);
+    const itemCount = order.items
+      ? order.items.reduce((sum, item) => sum + (item.quantity || 1), 0)
+      : 1;
+    const itemSummary = order.items?.slice(0, 2).map((item) => item.nameSnapshot).filter(Boolean);
+    const typeLabel = order.orderType === "PICKUP" ? "Collection" : order.orderType === "DELIVERY" ? "Delivery" : "Dine-in";
 
-              {/* Cards Container */}
-              <div className="flex-1 space-y-3 overflow-y-auto max-h-[calc(100vh-280px)] pr-1">
-                {columnOrders.length === 0 ? (
-                  <div className="h-24 flex items-center justify-center rounded-lg border border-dashed text-caption text-gray-400">
-                    No orders
-                  </div>
-                ) : (
-                  columnOrders.map((order) => {
-                    const isSelected = selectedId === order.id;
-                    const transitions = getValidTransitions(order.status, order.orderType);
-                    const itemCount = order.items
-                      ? order.items.reduce((sum, item) => sum + (item.quantity || 1), 0)
-                      : 1;
-
-                    return (
-                      <div
-                        key={order.id}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => onSelectOrder?.(order.id)}
-                        onKeyDown={(e) => {
-                          if (e.currentTarget !== e.target || (e.key !== "Enter" && e.key !== " ")) return;
-                          e.preventDefault();
-                          onSelectOrder?.(order.id);
-                        }}
-                        className={`group relative flex flex-col gap-2 rounded-lg border bg-white p-3 shadow-sm transition-all hover:shadow-md cursor-pointer ${
-                          isSelected ? "border-brand-red" : "border-gray-200"
-                        }`}
-                      >
-                        {/* Order Header: Number & Time */}
-                        <div className="flex items-center justify-between text-caption border-b pb-1.5 border-gray-100">
-                          <span className="font-bold text-gray-900">{order.orderNumber}</span>
-                          <span className="text-gray-500 font-medium text-xs">{formatTime(order.createdAt)}</span>
-                        </div>
-
-                        {/* Customer Info */}
-                        <div className="text-body text-xs text-gray-700 font-medium">
-                          <p className="truncate font-semibold text-gray-900">{order.customer.name}</p>
-                          <p className="text-gray-500">{order.customer.phone}</p>
-                        </div>
-
-                        {/* Badges: Type, Item Count, Total */}
-                        <div className="flex flex-wrap items-center justify-between gap-1 text-xs pt-1">
-                          <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-0.5 font-medium text-gray-700">
-                            {order.orderType}
-                          </span>
-                          <span className="text-gray-500">{itemCount} {itemCount === 1 ? "item" : "items"}</span>
-                          <span className="font-bold text-gray-900">{formatINR(order.total)}</span>
-                        </div>
-
-                        {/* Transition Buttons */}
-                        {transitions.length > 0 && (
-                          <div className="grid grid-cols-1 gap-2 border-t border-gray-100 pt-2 mt-1">
-                            {transitions.map((next) => {
-                              const isCancel = next === "CANCELLED";
-                              return (
-                                <Button
-                                  key={next}
-                                  size="sm"
-                                  variant={isCancel ? "danger" : "outline"}
-                                  disabled={isUpdating || updatingId === order.id}
-                                  isLoading={updatingId === order.id}
-                                  onClick={(e) => handleTransition(order.id, next, e)}
-                                  className={`h-auto min-h-7 w-full min-w-0 whitespace-normal break-words px-2 py-1 text-center text-xs leading-tight ${
-                                    !isCancel
-                                      ? "bg-brand-red text-white hover:bg-red-700 border-brand-red"
-                                      : ""
-                                  }`}
-                                >
-                                  {next.replaceAll("_", " ")}
-                                </Button>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          );
-        })}
+    return (
+      <div
+        key={order.id}
+        role="button"
+        tabIndex={0}
+        onClick={() => onSelectOrder?.(order.id)}
+        onKeyDown={(e) => {
+          if (e.currentTarget !== e.target || (e.key !== "Enter" && e.key !== " ")) return;
+          e.preventDefault();
+          onSelectOrder?.(order.id);
+        }}
+        className={`group relative flex w-full min-w-0 cursor-pointer flex-col gap-3 rounded-xl border bg-white p-4 shadow-card transition-shadow hover:shadow-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red ${
+          isSelected ? "border-2 border-brand-red" : "border-border-default"
+        }`}
+      >
+        <div className="flex min-w-0 items-center justify-between gap-2 border-b border-border-default pb-3">
+          <span className="truncate font-heading text-h4 font-bold text-charcoal">{order.orderNumber}</span>
+          <span className="shrink-0 text-caption font-medium text-bodySecondary">{formatTimeAgo(order.createdAt)}</span>
+        </div>
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <p className="min-w-0 truncate text-body font-semibold text-charcoal">{order.customer.name}</p>
+          <span className={`shrink-0 rounded-full px-2.5 py-1 text-tag font-semibold ${order.orderType === "DELIVERY" ? "bg-blushTint text-brand-red" : "bg-neutralTint text-bodySecondary"}`}>
+            {typeLabel}
+          </span>
+        </div>
+        <div className="flex min-w-0 items-end justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            {itemSummary && itemSummary.length > 0 ? (
+              <p className="line-clamp-2 break-words text-caption text-bodySecondary">
+                {itemSummary.join(", ")}{(order.items?.length ?? 0) > itemSummary.length ? ", …" : ""}
+              </p>
+            ) : null}
+            <p className="mt-1 text-caption text-bodySecondary">{itemCount} {itemCount === 1 ? "item" : "items"}</p>
+          </div>
+          <span className="shrink-0 font-heading text-h4 font-bold text-brand-red">{formatINR(order.total)}</span>
+        </div>
+        {transitions.length > 0 && (
+          <div className="grid grid-cols-1 gap-2 border-t border-border-default pt-3">
+            {transitions.map((next) => {
+              return (
+                <OrderActionButton
+                  key={next}
+                  status={next}
+                  disabled={isUpdating || updatingId === order.id}
+                  isLoading={updatingId === order.id}
+                  onClick={(e) => handleTransition(order.id, next, e)}
+                />
+              );
+            })}
+          </div>
+        )}
       </div>
+    );
+  };
+
+  return (
+    <div className="min-w-0">
+      {orders.length === 0 ? (
+        <div className="flex min-h-36 items-center justify-center rounded-xl border border-dashed border-border-default bg-white px-5 text-center text-body text-bodySecondary">
+          {emptyMessage}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {[...orders]
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            .map(renderOrderCard)}
+        </div>
+      )}
     </div>
   );
 }

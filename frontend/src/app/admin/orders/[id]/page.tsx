@@ -1,17 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { Suspense } from "react";
+import { useParams, useSearchParams } from "next/navigation";
 import {
-  ALLOWED_TRANSITIONS,
   useAdminOrderDetail,
   useUpdateOrderStatus,
 } from "@/lib/api/admin";
-import { Button } from "@/components/ui/Button";
 import { Card, ErrorState } from "@/components/ui/LayoutPrimitives";
+import { getOrderTransitions, OrderActionButton } from "@/components/admin/OrderActionButton";
 
 export default function AdminOrderDetailPage() {
+  return (
+    <Suspense fallback={<p className="py-12 text-body text-bodySecondary">Loading order details…</p>}>
+      <AdminOrderDetailContent />
+    </Suspense>
+  );
+}
+
+function AdminOrderDetailContent() {
   const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
+  const fromHistory = searchParams.get("from") === "history";
+  const backHref = fromHistory ? "/admin/orders/history" : "/admin/dashboard";
+  const backLabel = fromHistory ? "Back to order history" : "Back to dashboard";
   const id = params?.id;
   const order = useAdminOrderDetail(id);
   const updateStatus = useUpdateOrderStatus(id ?? "");
@@ -24,27 +36,21 @@ export default function AdminOrderDetailPage() {
     return (
       <div className="space-y-4 py-12">
         <ErrorState message="We could not find that order." onRetry={() => order.refetch()} />
-        <Link href="/admin/dashboard" className="inline-block text-body text-brand-red underline">
-          Back to dashboard
+        <Link href={backHref} className="inline-block text-body text-brand-red underline">
+          {backLabel}
         </Link>
       </div>
     );
   }
 
   const detail = order.data;
-  const transitions = ALLOWED_TRANSITIONS[detail.status].filter((next) => {
-    if (detail.status !== "READY") return true;
-    if (next === "OUT_FOR_DELIVERY") return detail.orderType === "DELIVERY";
-    if (next === "COMPLETED") return detail.orderType !== "DELIVERY";
-    return true;
-  });
-
+  const transitions = getOrderTransitions(detail.status, detail.orderType);
   return (
     <div className="min-w-0 space-y-5 pb-12 sm:space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="min-w-0">
-          <Link href="/admin/dashboard" className="text-body text-brand-red underline">
-            Back to dashboard
+          <Link href={backHref} className="text-body text-brand-red underline">
+            {backLabel}
           </Link>
           <h1 className="mt-2 break-all font-heading text-h2 font-bold">{detail.orderNumber}</h1>
           <p className="mt-1 break-words text-body text-bodySecondary">{detail.createdAt}</p>
@@ -109,15 +115,14 @@ export default function AdminOrderDetailPage() {
           <h2 className="font-heading font-bold">Update status</h2>
           <div className="mt-3 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
             {transitions.map((next) => (
-              <Button
+              <OrderActionButton
                 key={next}
+                status={next}
                 onClick={() => updateStatus.mutate({ status: next })}
                 disabled={updateStatus.isPending}
                 isLoading={updateStatus.isPending}
-                className="w-full whitespace-normal break-words px-3 text-center sm:w-auto"
-              >
-                {next.replaceAll("_", " ")}
-              </Button>
+                className="sm:w-auto"
+              />
             ))}
           </div>
         </Card>

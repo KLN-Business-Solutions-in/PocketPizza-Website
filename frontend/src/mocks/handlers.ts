@@ -23,6 +23,7 @@ import { findOrder, placeOrder, seedOrder, validateCreateOrder } from "./orderSt
  */
 
 const API = "*/api/v1";
+const mockProductActiveStates = new Map<string, boolean>();
 
 /** Service Workers don't always expose crypto.randomUUID — use a safe fallback. */
 const rid = (): string => {
@@ -249,15 +250,32 @@ export const handlers = [
     ok({
       categories: MOCK_CATEGORIES.map((c) => ({
         ...c,
-        items: c.items.map((i) => ({ ...i, isActive: true, categoryId: c.id })),
+        items: c.items.map((i) => ({
+          ...i,
+          isActive: mockProductActiveStates.get(i.id) ?? true,
+          categoryId: c.id,
+        })),
       })),
     })
   ),
-  http.post(`${API}/admin/products`, () => ok(MOCK_PRODUCTS[0], 201)),
-  http.patch(`${API}/admin/products/:id`, () => ok(MOCK_PRODUCTS[0])),
-  http.patch(`${API}/admin/products/:id/status`, () =>
-    ok({ id: "prod-1", isActive: true })
+  http.post(`${API}/admin/uploads/product-image`, () =>
+    ok({ imageUrl: "https://example.com/mock-product-image.webp" })
   ),
+  http.post(`${API}/admin/products`, async ({ request }) => {
+    const body = await request.json() as Record<string, unknown>;
+    return ok({ ...MOCK_PRODUCTS[0], ...body, id: "mock-new" }, 201);
+  }),
+  http.patch(`${API}/admin/products/:id`, async ({ params, request }) => {
+    const body = await request.json() as Record<string, unknown>;
+    const product = MOCK_PRODUCTS.find((item) => item.id === params.id) ?? MOCK_PRODUCTS[0];
+    return ok({ ...product, ...body });
+  }),
+  http.patch(`${API}/admin/products/:id/status`, ({ params }) => {
+    const id = String(params.id);
+    const isActive = !(mockProductActiveStates.get(id) ?? true);
+    mockProductActiveStates.set(id, isActive);
+    return ok({ id, isActive });
+  }),
 
   // ---- Admin reports ----
   http.get(`${API}/admin/reports/summary`, () =>
