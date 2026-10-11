@@ -6,6 +6,7 @@ import {
   type OrderStatusResponse,
   type QuoteResponse,
 } from "@shared/contract/contract";
+import { maskIndianPhone } from "@/lib/phone";
 
 /**
  * Day 7 mock order store.
@@ -122,6 +123,12 @@ export function placeOrder(request: CreateOrderRequest, priced: QuoteResponse): 
     total: priced.total,
     notes: request.notes ?? null,
     createdAt,
+    // Mock dispatch "succeeds" instantly so the confirmation screen renders
+    // the sent state rather than waiting for a provider that doesn't exist.
+    whatsapp: {
+      status: "sent",
+      destinationMasked: maskIndianPhone(request.customer.phone),
+    },
   };
 
   const invoice: InvoiceResponse = {

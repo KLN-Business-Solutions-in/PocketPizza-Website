@@ -101,6 +101,7 @@ export const MOCK_ORDER: OrderStatusResponse = {
   total: "469.00",
   notes: null,
   createdAt: new Date().toISOString(),
+  whatsapp: { status: "sent", destinationMasked: "+91 \u2022\u2022\u2022\u2022\u2022\u2022 3210" },
 };
 
 export const MOCK_INVOICE: InvoiceResponse = {

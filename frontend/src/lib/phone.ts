@@ -21,3 +21,14 @@ export function isValidIndianPhone(raw: string): boolean {
     return false;
   }
 }
+
+/**
+ * Display-only mask: "+91 •••••• 3210". The raw number never needs to be
+ * shown on confirmation screens — only enough digits to recognise it.
+ * Mirrors the backend's maskDestination.
+ */
+export function maskIndianPhone(raw: string | null | undefined): string | null {
+  const digits = (raw ?? "").replace(/\D/g, "");
+  if (digits.length < 4) return null;
+  return `+91 \u2022\u2022\u2022\u2022\u2022\u2022 ${digits.slice(-4)}`;
+}
