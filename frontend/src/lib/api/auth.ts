@@ -20,12 +20,17 @@ export type AdminMe = {
  */
 
 export function useAdminLogin() {
+  const qc = useQueryClient();
+
   return useMutation({
     mutationFn: (body: LoginRequest) =>
       apiFetch<{ admin: AdminMe }>("/auth/login", {
         method: "POST",
         body: JSON.stringify(body),
       }),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["admin", "session"], exact: true });
+    },
   });
 }
 
