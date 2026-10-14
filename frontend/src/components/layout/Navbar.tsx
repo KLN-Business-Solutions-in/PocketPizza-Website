@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useCartHydrated, useCartStore } from "@/lib/cart/store";
+import { useCustomerLogout, useCustomerSession } from "@/lib/api/customerAuth";
+import { useToast } from "@/components/ui/ToastProvider";
 
 const links = [
   { href: "/", label: "Home" },
@@ -34,11 +36,25 @@ function BagIcon({ className }: { className?: string }) {
 
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   // Gate on hydration so the server-rendered markup and the first client
   // render agree; the badge fills in once localStorage has been read.
   const hasHydrated = useCartHydrated();
   const cartCount = useCartStore((s) => s.lines.reduce((n, l) => n + l.quantity, 0));
+  const session = useCustomerSession();
+  const logout = useCustomerLogout();
+  const toast = useToast();
+  const customer = session.data?.loggedIn ? session.data.customer : null;
+
+  const handleLogout = async () => {
+    try {
+      await logout.mutateAsync();
+      router.replace("/");
+    } catch {
+      toast.push("Unable to log out. Please try again.", "error");
+    }
+  };
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
@@ -48,8 +64,8 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border-default bg-white">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-5 md:h-16 md:px-10">
-        <Link href="/" className="flex items-center gap-2 font-heading text-lg font-extrabold tracking-tight">
+      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-3 sm:px-5 md:h-16 md:px-10">
+        <Link href="/" className="flex shrink-0 items-center gap-1.5 whitespace-nowrap font-heading text-base font-extrabold tracking-tight sm:gap-2 sm:text-lg">
           <span
             className="grid h-7 w-7 place-items-center rounded-md bg-brand-red text-sm text-white"
             aria-hidden="true"
@@ -78,17 +94,32 @@ export default function Navbar() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-3">
           <Link
             href="/cart"
-            className="flex items-center gap-1.5 rounded-full bg-blushTint px-4 py-2 font-heading text-xs font-semibold text-brand-red transition-colors hover:bg-brand-red hover:text-white"
+            aria-label={hasHydrated ? `Cart (${cartCount})` : "Cart"}
+            className="flex items-center gap-1 rounded-full bg-blushTint px-2.5 py-2 font-heading text-xs font-semibold text-brand-red transition-colors hover:bg-brand-red hover:text-white sm:gap-1.5 sm:px-4"
           >
             <BagIcon className="h-3.5 w-3.5" />
-            {hasHydrated ? `Cart (${cartCount})` : "Cart"}
+            <span className="hidden sm:inline">{hasHydrated ? `Cart (${cartCount})` : "Cart"}</span>
           </Link>
+          {customer ? (
+            <div className="flex items-center gap-1 sm:gap-2">
+              <span title={customer.name} aria-label={customer.name} className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-blushTint font-heading text-xs font-bold text-brand-red">
+                {customer.name.trim().charAt(0).toUpperCase()}
+              </span>
+              <button type="button" onClick={handleLogout} disabled={logout.isPending} className="whitespace-nowrap rounded-md px-1.5 py-2 text-[11px] font-semibold text-charcoal hover:text-brand-red disabled:opacity-50 sm:px-2 sm:text-xs">
+                {logout.isPending ? "…" : "Log out"}
+              </button>
+            </div>
+          ) : (
+            <Link href="/login" className="whitespace-nowrap rounded-md px-1.5 py-2 text-xs font-semibold text-charcoal hover:text-brand-red sm:px-2">
+              Log in
+            </Link>
+          )}
           <button
             type="button"
-            className="grid h-9 w-9 place-items-center rounded-md text-charcoal hover:bg-neutralTint md:hidden"
+            className="grid h-9 w-8 place-items-center rounded-md text-charcoal hover:bg-neutralTint sm:w-9 md:hidden"
             onClick={() => setOpen((v) => !v)}
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}

@@ -107,6 +107,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   // automatically clears all in-memory local state (React Query cache, etc.) and ensures a clean slate.
   if (
     res.status === 401 &&
+    (cleanPath === "/admin" || cleanPath.startsWith("/admin/")) &&
     (code === "AUTHENTICATION_REQUIRED" || code === "AUTHENTICATION_INVALID")
   ) {
     if (typeof window !== "undefined" && window.location.pathname !== "/admin/login") {
