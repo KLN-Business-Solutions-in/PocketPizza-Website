@@ -56,6 +56,7 @@ export default function CheckoutPage() {
   const hasHydrated = useCartHydrated();
   const lines = useCartStore((s) => s.lines);
   const orderType = useCartStore((s) => s.orderType);
+  const setCustomerPhone = useCartStore((s) => s.setCustomerPhone);
   const setOrderType = useCartStore((s) => s.setOrderType);
   const updateQty = useCartStore((s) => s.updateQty);
   const removeLine = useCartStore((s) => s.removeLine);
@@ -94,6 +95,7 @@ export default function CheckoutPage() {
 
   const {
     register,
+    unregister,
     handleSubmit,
     setValue,
     formState: { errors, isValid, isSubmitting },
@@ -109,6 +111,7 @@ export default function CheckoutPage() {
   });
 
   const changeOrderType = (next: OrderType) => {
+    if (next !== "DELIVERY") unregister("address");
     setOrderType(next);
     setValue("orderType", next, { shouldValidate: true, shouldDirty: true });
     setSubmitError(null);
@@ -211,6 +214,7 @@ export default function CheckoutPage() {
           idempotencyKey,
         });
         const res = await createOrder.mutateAsync(body);
+        setCustomerPhone(values.customer.phone);
         clear();
         setIdempotencyKey(newIdempotencyKey());
         // Public lookup uses publicToken, never orderNumber (§11.5, §16.13).

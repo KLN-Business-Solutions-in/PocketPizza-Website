@@ -1,5 +1,6 @@
 import { http, HttpResponse } from "msw";
 import type { OrderStatus } from "@shared/contract/contract";
+import { normalizeIndianPhone } from "@/lib/phone";
 import {
   MOCK_ADMIN_ORDER,
   MOCK_ADMIN_ORDERS,
@@ -9,7 +10,7 @@ import {
   MOCK_PRODUCTS,
   MOCK_QUOTE,
 } from "./fixtures";
-import { findOrder, placeOrder, seedOrder, validateCreateOrder } from "./orderStore";
+import { findOrder, findOrdersByPhone, placeOrder, seedOrder, validateCreateOrder } from "./orderStore";
 
 /**
  * MSW handlers mirror Backend Master Reference §15 endpoint reference.
@@ -24,6 +25,14 @@ import { findOrder, placeOrder, seedOrder, validateCreateOrder } from "./orderSt
 
 const API = "*/api/v1";
 const mockProductActiveStates = new Map<string, boolean>();
+const MOCK_CURRENT_ORDERS = [
+  { orderNumber: "ORD-20261014-001", publicToken: "mock-current-new-001", status: "NEW", orderType: "DELIVERY", itemCount: 2, total: "648.00", createdAt: "2026-10-14T12:10:00.000Z" },
+  { orderNumber: "ORD-20261014-002", publicToken: "mock-current-preparing-002", status: "PREPARING", orderType: "PICKUP", itemCount: 1, total: "380.00", createdAt: "2026-10-14T11:45:00.000Z" },
+  { orderNumber: "ORD-20261014-003", publicToken: "mock-current-ready-003", status: "READY", orderType: "DELIVERY", itemCount: 3, total: "920.00", createdAt: "2026-10-14T11:20:00.000Z" },
+  { orderNumber: "ORD-20261013-004", publicToken: "mock-current-out-004", status: "OUT_FOR_DELIVERY", orderType: "DELIVERY", itemCount: 2, total: "710.00", createdAt: "2026-10-13T19:05:00.000Z" },
+  { orderNumber: "ORD-20261013-005", publicToken: "mock-current-complete-005", status: "COMPLETED", orderType: "PICKUP", itemCount: 1, total: "450.00", createdAt: "2026-10-13T18:20:00.000Z" },
+  { orderNumber: "ORD-20261012-006", publicToken: "mock-current-cancelled-006", status: "CANCELLED", orderType: "DELIVERY", itemCount: 2, total: "560.00", createdAt: "2026-10-12T16:30:00.000Z" },
+] as const;
 
 /** Service Workers don't always expose crypto.randomUUID — use a safe fallback. */
 const rid = (): string => {
@@ -176,6 +185,28 @@ export const handlers = [
       const details = e instanceof QuoteRejection ? [e.reason] : [];
       return fail("VALIDATION_ERROR", "Order rejected", 400, details);
     }
+  }),
+
+  http.get(`${API}/orders/phone/:phone`, ({ params }) => {
+    let phone: string;
+    try {
+      phone = normalizeIndianPhone(String(params.phone));
+    } catch {
+      return fail("VALIDATION_ERROR", "Invalid phone number.", 400);
+    }
+
+    const state = typeof localStorage === "undefined"
+      ? null
+      : localStorage.getItem("mockOrdersState");
+    if (state === "empty") return ok([]);
+    if (state === "error") return fail("INTERNAL_ERROR", "Unable to load orders.", 500);
+    if (state === "rateLimited") return fail("RATE_LIMITED", "Too many requests.", 429);
+
+    const samples = phone === "9876543210" ? MOCK_CURRENT_ORDERS : [];
+    const orders = [...findOrdersByPhone(phone), ...samples].sort(
+      (a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)
+    );
+    return ok(orders);
   }),
 
   http.get(`${API}/orders/:publicToken/invoice`, ({ params }) => {

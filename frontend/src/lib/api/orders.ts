@@ -1,17 +1,29 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { apiFetch } from "./client";
+import { ApiError, apiFetch } from "@/lib/api/client";
 import { isTerminalStatus, ORDER_POLL_INTERVAL_MS } from "@/lib/order/status";
 import type {
   CreateOrderRequest,
   CreateOrderResponse,
   InvoiceResponse,
+  OrderStatus,
   OrderStatusResponse,
   OrderType,
   QuoteRequest,
   QuoteResponse,
 } from "@shared/contract/contract";
+
+/** Temporary local phone-order summary until the endpoint is added to the contract. */
+export type CurrentOrder = {
+  orderNumber: string;
+  publicToken: string;
+  status: OrderStatus;
+  orderType: OrderType;
+  itemCount: number;
+  total: string;
+  createdAt: string;
+};
 
 /**
  * Orders — Backend Master Reference §11, §15, §16, §18, §19.
@@ -68,6 +80,24 @@ export function useCreateOrder() {
         method: "POST",
         body: JSON.stringify(body),
       }),
+  });
+}
+
+export function useCurrentOrders(phone: string | null) {
+  return useQuery<CurrentOrder[]>({
+    queryKey: ["currentOrders", phone],
+    queryFn: async () => {
+      const response = await apiFetch<CurrentOrder[] | { items: CurrentOrder[] }>(
+        `/orders/phone/${encodeURIComponent(phone ?? "")}`
+      );
+      return Array.isArray(response) ? response : response.items;
+    },
+    enabled: Boolean(phone),
+    refetchOnMount: "always",
+    retry: (failureCount, error) =>
+      error instanceof ApiError && error.status >= 400 && error.status < 500
+        ? false
+        : failureCount < 1,
   });
 }
 

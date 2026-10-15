@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, EmptyState, Skeleton } from "@/components/ui/LayoutPrimitives";
 import { OrderTypeSelector } from "@/components/cart/OrderTypeSelector";
 import { CartLineRow } from "@/components/cart/CartLineRow";
+import { CurrentOrdersSection } from "@/components/orders/CurrentOrdersSection";
 
 export default function CartPage() {
   const hasHydrated = useCartHydrated();
@@ -37,12 +38,14 @@ export default function CartPage() {
         <h1 className="text-h2 font-heading font-bold">Cart</h1>
         <Skeleton className="h-28 w-full rounded-md" />
         <Skeleton className="h-24 w-full rounded-md" />
+        <CurrentOrdersSection />
       </div>
     );
   }
 
   if (lines.length === 0) {
     return (
+      <div className="space-y-6 pb-12">
       <EmptyState
         title="Your cart is empty"
         description="Browse the menu and add something delicious. Your cart is saved on this device."
@@ -52,6 +55,8 @@ export default function CartPage() {
           </Link>
         }
       />
+      <CurrentOrdersSection />
+      </div>
     );
   }
 
@@ -106,6 +111,8 @@ export default function CartPage() {
           Proceed to Checkout
         </Button>
       </Link>
+
+      <CurrentOrdersSection />
     </div>
   );
 }

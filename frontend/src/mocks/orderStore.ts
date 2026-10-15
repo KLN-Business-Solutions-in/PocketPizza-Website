@@ -6,7 +6,7 @@ import {
   type OrderStatusResponse,
   type QuoteResponse,
 } from "@shared/contract/contract";
-import { maskIndianPhone } from "@/lib/phone";
+import { maskIndianPhone, normalizeIndianPhone } from "@/lib/phone";
 
 /**
  * Day 7 mock order store.
@@ -30,6 +30,7 @@ export type PlacedOrder = {
 };
 
 const placed = new Map<string, PlacedOrder>();
+const postedOrderTokens = new Set<string>();
 
 /** `MOCK_PUBLIC_TOKEN` is pre-seeded so the demo order page is still reachable. */
 export function seedOrder(publicToken: string, order: PlacedOrder): void {
@@ -39,6 +40,31 @@ export function seedOrder(publicToken: string, order: PlacedOrder): void {
 export function findOrder(publicToken: string | undefined): PlacedOrder | undefined {
   if (!publicToken) return undefined;
   return placed.get(publicToken);
+}
+
+export function findOrdersByPhone(phone: string) {
+  return [...postedOrderTokens].flatMap((publicToken) => {
+    const order = placed.get(publicToken);
+    if (!order) return [];
+
+    let customerPhone: string;
+    try {
+      customerPhone = normalizeIndianPhone(order.invoice.customer.phone);
+    } catch {
+      return [];
+    }
+    if (customerPhone !== phone) return [];
+
+    return [{
+      orderNumber: order.status.orderNumber,
+      publicToken: order.status.publicToken,
+      status: order.status.status,
+      orderType: order.status.orderType,
+      itemCount: order.status.items.reduce((count, item) => count + item.quantity, 0),
+      total: order.status.total,
+      createdAt: order.status.createdAt,
+    }];
+  });
 }
 
 /**
@@ -159,6 +185,7 @@ export function placeOrder(request: CreateOrderRequest, priced: QuoteResponse): 
 
   const stored: PlacedOrder = { status, invoice };
   placed.set(publicToken, stored);
+  postedOrderTokens.add(publicToken);
 
   return {
     created: {
@@ -177,5 +204,6 @@ export function placeOrder(request: CreateOrderRequest, priced: QuoteResponse): 
 /** Test hook: forget everything. */
 export function resetOrders(): void {
   placed.clear();
+  postedOrderTokens.clear();
   sequence = 1;
 }

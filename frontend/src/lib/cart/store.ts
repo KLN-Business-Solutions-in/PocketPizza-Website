@@ -4,6 +4,7 @@ import React from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { OrderType } from "@shared/contract/contract";
+import { normalizeIndianPhone } from "@/lib/phone";
 
 /**
  * Cart lives in browser localStorage per Backend Master Reference §2
@@ -64,7 +65,9 @@ export type OrderTypeState = OrderType;
 type CartState = {
   lines: CartLine[];
   orderType: OrderTypeState;
+  customerPhone: string | null;
   addLine: (line: CartLineDraft) => AddLineResult;
+  setCustomerPhone: (phone: string | null) => void;
   updateQty: (key: string, quantity: number) => void;
   removeLine: (key: string) => void;
   /**
@@ -136,6 +139,15 @@ function sanitizeLines(value: unknown): CartLine[] {
   return out;
 }
 
+function sanitizeCustomerPhone(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  try {
+    return normalizeIndianPhone(value);
+  } catch {
+    return null;
+  }
+}
+
 /**
  * v1 → v2: v1 lines had no displayName/displayPrice. They cannot be labelled
  * or priced client-side and the server would reject them on Day 6 anyway, so
@@ -161,6 +173,7 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       lines: [],
       orderType: "DELIVERY",
+      customerPhone: null,
       addLine: (line) => {
         const current = get().lines;
         const draft: CartLineDraft = {
@@ -186,6 +199,8 @@ export const useCartStore = create<CartState>()(
         set({ lines: [...current, { ...draft, quantity, key }] });
         return { ok: true };
       },
+      setCustomerPhone: (phone) =>
+        set({ customerPhone: phone === null ? null : normalizeIndianPhone(phone) }),
       updateQty: (key, quantity) => {
         if (quantity <= 0) {
           set({ lines: get().lines.filter((l) => l.key !== key) });
@@ -211,18 +226,31 @@ export const useCartStore = create<CartState>()(
     {
       name: "pokket-cart",
       version: 2,
-      partialize: (state) => ({ lines: state.lines, orderType: state.orderType }),
+      partialize: (state) => ({
+        lines: state.lines,
+        orderType: state.orderType,
+        customerPhone: state.customerPhone,
+      }),
       migrate: migratePersistedCart,
       // Always validate on read: zustand's default merge spreads the raw parsed
       // payload ({...current, ...persisted}), which would let a tampered
       // localStorage overwrite store actions or inject unvalidated lines.
       merge: (persisted, current) => {
-        const p = (persisted ?? {}) as { lines?: unknown; orderType?: unknown };
+        const p = (persisted ?? {}) as {
+          lines?: unknown;
+          orderType?: unknown;
+          customerPhone?: unknown;
+        };
         const orderType: OrderTypeState =
           p.orderType === "DELIVERY" || p.orderType === "PICKUP" || p.orderType === "DINE_IN"
             ? p.orderType
             : current.orderType;
-        return { ...current, lines: sanitizeLines(p.lines), orderType };
+        return {
+          ...current,
+          lines: sanitizeLines(p.lines),
+          orderType,
+          customerPhone: sanitizeCustomerPhone(p.customerPhone),
+        };
       },
     }
   )
