@@ -4,6 +4,7 @@ import React from "react";
 import type { OrderStatus, OrderType } from "@shared/contract/contract";
 import { formatINR } from "@/lib/money";
 import { getOrderTransitions, OrderActionButton } from "@/components/admin/OrderActionButton";
+import { Button } from "@/components/ui/Button";
 
 export type KanbanOrder = {
   id: string;
@@ -66,64 +67,121 @@ export function KanbanBoard({
     }
   };
 
-  const renderOrderCard = (order: KanbanOrder) => {
+  const sorted = [...orders].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
+  const renderOrderRow = (order: KanbanOrder) => {
     const isSelected = selectedId === order.id;
     const transitions = getOrderTransitions(order.status, order.orderType);
     const itemCount = order.items
       ? order.items.reduce((sum, item) => sum + (item.quantity || 1), 0)
       : 1;
-    const itemSummary = order.items?.slice(0, 2).map((item) => item.nameSnapshot).filter(Boolean);
-    const typeLabel = order.orderType === "PICKUP" ? "Collection" : order.orderType === "DELIVERY" ? "Delivery" : "Dine-in";
+    const typeLabel =
+      order.orderType === "PICKUP" ? "Collection" : order.orderType === "DELIVERY" ? "Delivery" : "Dine-in";
+    const statusColor: Record<OrderStatus, string> = {
+      NEW: "bg-amber-100 text-amber-800",
+      CONFIRMED: "bg-blue-100 text-blue-800",
+      PREPARING: "bg-indigo-100 text-indigo-800",
+      READY: "bg-emerald-100 text-emerald-800",
+      OUT_FOR_DELIVERY: "bg-purple-100 text-purple-800",
+      COMPLETED: "bg-green-100 text-green-800",
+      CANCELLED: "bg-rose-100 text-rose-800",
+    };
 
     return (
-      <div
-        key={order.id}
-        role="button"
-        tabIndex={0}
-        onClick={() => onSelectOrder?.(order.id)}
-        onKeyDown={(e) => {
-          if (e.currentTarget !== e.target || (e.key !== "Enter" && e.key !== " ")) return;
-          e.preventDefault();
-          onSelectOrder?.(order.id);
-        }}
-        className={`group relative flex w-full min-w-0 cursor-pointer flex-col gap-3 rounded-xl border bg-white p-4 shadow-card transition-shadow hover:shadow-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red ${
-          isSelected ? "border-2 border-brand-red" : "border-border-default"
-        }`}
-      >
-        <div className="flex min-w-0 items-center justify-between gap-2 border-b border-border-default pb-3">
-          <span className="truncate font-heading text-h4 font-bold text-charcoal">{order.orderNumber}</span>
-          <span className="shrink-0 text-caption font-medium text-bodySecondary">{formatTimeAgo(order.createdAt)}</span>
-        </div>
-        <div className="flex min-w-0 items-center justify-between gap-2">
-          <p className="min-w-0 truncate text-body font-semibold text-charcoal">{order.customer.name}</p>
-          <span className={`shrink-0 rounded-full px-2.5 py-1 text-tag font-semibold ${order.orderType === "DELIVERY" ? "bg-blushTint text-brand-red" : "bg-neutralTint text-bodySecondary"}`}>
-            {typeLabel}
-          </span>
-        </div>
-        <div className="flex min-w-0 items-end justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            {itemSummary && itemSummary.length > 0 ? (
-              <p className="line-clamp-2 break-words text-caption text-bodySecondary">
-                {itemSummary.join(", ")}{(order.items?.length ?? 0) > itemSummary.length ? ", …" : ""}
-              </p>
-            ) : null}
-            <p className="mt-1 text-caption text-bodySecondary">{itemCount} {itemCount === 1 ? "item" : "items"}</p>
+      <div key={order.id} className="min-w-0">
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => onSelectOrder?.(order.id)}
+          onKeyDown={(e) => {
+            if (e.currentTarget !== e.target || (e.key !== "Enter" && e.key !== " ")) return;
+            e.preventDefault();
+            onSelectOrder?.(order.id);
+          }}
+          className={`group relative flex min-w-0 items-center justify-between gap-3 rounded-xl border bg-white p-3 text-body transition-all ${
+            isSelected
+              ? "border-2 border-brand-red bg-blushTint/50 shadow-sm"
+              : "border-border-default hover:border-brand-red/30 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red"
+          }`}
+        >
+          <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 flex items-center gap-2">
+              <span className="truncate font-heading text-h4 font-bold text-charcoal">{order.orderNumber}</span>
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-tag font-semibold ${statusColor[order.status]}`}
+              >
+                {order.status}
+              </span>
+            </div>
+            <div className="flex min-w-0 items-center gap-2 sm:justify-end">
+              <p className="min-w-0 truncate text-body font-semibold text-charcoal">{order.customer.name}</p>
+              <span className={`shrink-0 rounded-full px-2.5 py-1 text-tag font-semibold ${order.orderType === "DELIVERY" ? "bg-blushTint text-brand-red" : "bg-neutralTint text-bodySecondary"}`}>
+                {typeLabel}
+              </span>
+              <span className="shrink-0 font-heading text-h4 font-bold text-brand-red">{formatINR(order.total)}</span>
+            </div>
           </div>
-          <span className="shrink-0 font-heading text-h4 font-bold text-brand-red">{formatINR(order.total)}</span>
+          <div className="mt-1 flex min-w-0 items-center justify-between gap-3 border-t border-border-default pt-2 sm:hidden lg:hidden">
+            <span className="text-caption text-bodySecondary">{formatTimeAgo(order.createdAt)}</span>
+            <span className="text-caption text-bodySecondary">{itemCount} {itemCount === 1 ? "item" : "items"}</span>
+            <span className="text-caption text-bodySecondary">{order.customer.phone}</span>
+          </div>
         </div>
-        {transitions.length > 0 && (
-          <div className="grid grid-cols-1 gap-2 border-t border-border-default pt-3">
-            {transitions.map((next) => {
-              return (
+
+        {isSelected && (
+          <div className="mt-2 rounded-xl border border-border-default bg-cream-bg/60 p-3 text-body">
+            <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
+                <p className="text-caption font-bold text-bodySecondary uppercase tracking-wider mb-1">Customer</p>
+                <p className="text-body text-charcoal">{order.customer.name}</p>
+                <p className="mt-1 text-caption text-bodySecondary">{order.customer.phone}</p>
+              </div>
+              <div>
+                <p className="text-caption font-bold text-bodySecondary uppercase tracking-wider mb-1">Type</p>
+                <p className="text-body text-charcoal">{typeLabel}</p>
+                <p className="mt-1 text-caption text-bodySecondary">{formatTimeAgo(order.createdAt)}</p>
+              </div>
+              <div className="sm:col-span-2">
+                <p className="text-caption font-bold text-bodySecondary uppercase tracking-wider mb-1">Items</p>
+                <ul className="space-y-1">
+                  {(order.items ?? []).map((item, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-charcoal">
+                      <span className="shrink-0 font-semibold text-brand-red">{item.quantity}×</span>
+                      <span className="break-words">{item.nameSnapshot}</span>
+                      {item.variantSnapshot && (
+                        <span className="ml-1 text-caption text-bodySecondary">({item.variantSnapshot})</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center justify-end gap-2">
+              {transitions.includes("CONFIRMED") && (
                 <OrderActionButton
-                  key={next}
-                  status={next}
+                  status="CONFIRMED"
+                  label="Accept"
+                  tone="success"
                   disabled={isUpdating || updatingId === order.id}
                   isLoading={updatingId === order.id}
-                  onClick={(e) => handleTransition(order.id, next, e)}
+                  onClick={(e) => handleTransition(order.id, "CONFIRMED", e)}
+                  className="w-auto"
                 />
-              );
-            })}
+              )}
+              {transitions.includes("CANCELLED") && (
+                <OrderActionButton
+                  status="CANCELLED"
+                  label="Reject"
+                  disabled={isUpdating || updatingId === order.id}
+                  isLoading={updatingId === order.id}
+                  onClick={(e) => handleTransition(order.id, "CANCELLED", e)}
+                  className="w-auto"
+                />
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -137,11 +195,7 @@ export function KanbanBoard({
           {emptyMessage}
         </div>
       ) : (
-        <div className="space-y-3">
-          {[...orders]
-            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-            .map(renderOrderCard)}
-        </div>
+        <div className="space-y-2">{sorted.map(renderOrderRow)}</div>
       )}
     </div>
   );
