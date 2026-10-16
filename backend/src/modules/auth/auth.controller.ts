@@ -9,6 +9,9 @@ import {
 import { AuthError } from '../../utils/errors';
 import { sendSuccess } from '../../utils/response';
 
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
 const COOKIE_OPTS = {
   httpOnly: true,
   secure: true,
@@ -17,8 +20,14 @@ const COOKIE_OPTS = {
 } as const;
 
 function setSessionCookies(res: Response, accessToken: string, refreshToken: string): void {
-  res.cookie(COOKIE_ADMIN_ACCESS, accessToken, COOKIE_OPTS);
-  res.cookie(COOKIE_ADMIN_REFRESH, refreshToken, COOKIE_OPTS);
+  res.cookie(COOKIE_ADMIN_ACCESS, accessToken, {
+    ...COOKIE_OPTS,
+    maxAge: SEVEN_DAYS_MS,
+  });
+  res.cookie(COOKIE_ADMIN_REFRESH, refreshToken, {
+    ...COOKIE_OPTS,
+    maxAge: THIRTY_DAYS_MS,
+  });
 }
 
 export async function loginController(req: Request, res: Response): Promise<void> {

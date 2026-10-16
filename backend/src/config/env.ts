@@ -10,7 +10,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   JWT_ISSUER: z.string().default('pokket-pizza'),
   JWT_AUDIENCE: z.string().default('pokket-pizza-admin'),
-  ACCESS_TOKEN_TTL: z.string().default('15m'),
+  ACCESS_TOKEN_TTL: z.string().default('7d'),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().default(30),
   COOKIE_DOMAIN: z.string().optional().default(''),
   CORS_ORIGIN: z.string().min(1, 'CORS_ORIGIN is required'),

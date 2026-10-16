@@ -267,64 +267,129 @@ export function AdminDashboardContent() {
           {detail.isLoading && <p className="text-body py-4">Loading order details…</p>}
           {detail.isError && <ErrorState message="Failed to load order detail." onRetry={() => detail.refetch()} />}
           {detail.data && (
-            <div className="mt-4 min-w-0 space-y-3 text-body">
-              <div className="flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-                <div className="flex min-w-0 flex-wrap items-center gap-y-1">
-                  <span className="break-all text-xl font-bold text-slate-900">{detail.data.orderNumber}</span>
-                  <span className="ml-2 inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-sm font-medium text-gray-700">
-                    {detail.data.orderType}
-                  </span>
+            <div className="mt-4 min-w-0 space-y-4">
+              {/* Status Header */}
+              <div className="flex min-w-0 items-start justify-between gap-2 border-b border-[#eadccc] pb-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="break-all font-heading text-lg font-bold text-charcoal">
+                      {detail.data.orderNumber}
+                    </span>
+                    <span className="inline-flex items-center rounded-md bg-neutralTint px-2 py-0.5 text-xs font-semibold text-charcoal">
+                      {detail.data.orderType === "PICKUP" ? "Collection" : detail.data.orderType === "DELIVERY" ? "Delivery" : "Dine-in"}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-bodySecondary">
+                    Placed: {new Date(detail.data.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {new Date(detail.data.createdAt).toLocaleDateString()}
+                  </p>
                 </div>
-                <span className="shrink-0 rounded-full bg-brand-red/10 px-3 py-1.5 text-sm font-bold text-brand-red">
-                  {detail.data.status}
+                <span className="shrink-0 rounded-full bg-brand-red/10 px-3 py-1 text-xs font-bold text-brand-red border border-brand-red/20">
+                  {detail.data.status.replaceAll("_", " ")}
                 </span>
               </div>
-              <p className="break-words text-base text-bodySecondary lg:text-sm">
-                Customer: <strong className="text-gray-800">{detail.data.customer.name}</strong> ({detail.data.customer.phone})
-              </p>
-              {detail.data.orderType === "DELIVERY" && detail.data.address && (
-                <address className="break-words text-base leading-relaxed text-bodySecondary not-italic lg:text-sm">
-                  {detail.data.address.line1}
-                  {detail.data.address.line2 ? `, ${detail.data.address.line2}` : ""}
-                  {detail.data.address.landmark ? ` (${detail.data.address.landmark})` : ""}
-                  <br />
-                  {detail.data.address.city}, {detail.data.address.pincode}
-                </address>
-              )}
+
+              {/* Customer Contact Card */}
+              <div className="rounded-xl border border-border-default/80 bg-neutralTint/40 p-3 text-xs space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-caption font-bold uppercase tracking-wider text-mutedGray">Customer Details</span>
+                  <a
+                    href={`tel:${detail.data.customer.phone}`}
+                    className="inline-flex items-center gap-1 font-semibold text-brand-red hover:underline"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    Call
+                  </a>
+                </div>
+                <p className="text-sm font-semibold text-charcoal">{detail.data.customer.name}</p>
+                <p className="text-bodySecondary">{detail.data.customer.phone}</p>
+                {detail.data.orderType === "DELIVERY" && detail.data.address && (
+                  <div className="pt-1 border-t border-border-default/60">
+                    <p className="text-caption font-semibold text-mutedGray uppercase">Delivery Address</p>
+                    <p className="mt-0.5 text-charcoal leading-relaxed">
+                      {detail.data.address.line1}
+                      {detail.data.address.line2 ? `, ${detail.data.address.line2}` : ""}
+                      {detail.data.address.landmark ? ` (${detail.data.address.landmark})` : ""}
+                      <br />
+                      {detail.data.address.city} - {detail.data.address.pincode}
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {detail.data.notes && (
-                <p className="break-words rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                  Notes: {detail.data.notes}
-                </p>
+                <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-2.5 text-xs text-amber-900">
+                  <span className="font-bold">Kitchen Note: </span>
+                  {detail.data.notes}
+                </div>
               )}
-              <div className="min-w-0 space-y-3 border-y border-[#eadccc] py-4">
-                <p className="text-sm font-bold uppercase text-gray-500">Items</p>
-                <ul className="list-disc space-y-2 pl-5 text-sm">
+
+              {/* Order Items */}
+              <div className="min-w-0 space-y-2 border-y border-[#eadccc] py-3 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold uppercase tracking-wider text-mutedGray text-caption">Order Items</span>
+                  <span className="text-caption font-medium text-bodySecondary">
+                    {detail.data.items.reduce((s, it) => s + it.quantity, 0)} total items
+                  </span>
+                </div>
+                <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
                   {detail.data.items.map((it, i) => (
-                    <li key={i} className="break-words text-base text-charcoal">
-                      <span className="font-semibold">{it.quantity}×</span> {it.nameSnapshot}
-                      {it.variantSnapshot ? ` (${it.variantSnapshot})` : ""}
-                      {it.addOnSnapshot && it.addOnSnapshot.length > 0 && (
-                        <span className="break-words text-sm text-gray-500">
-                          {" "}+ {it.addOnSnapshot.map((a) => a.label).join(", ")}
-                        </span>
-                      )}
-                    </li>
+                    <div key={i} className="flex items-start justify-between gap-2 border-b border-dashed border-border-default/50 pb-2 last:border-0 last:pb-0">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-charcoal text-xs">
+                          <span className="text-brand-red font-bold mr-1">{it.quantity}×</span>
+                          {it.nameSnapshot}
+                          {it.variantSnapshot && (
+                            <span className="text-bodySecondary font-normal ml-1">({it.variantSnapshot})</span>
+                          )}
+                        </p>
+                        {it.addOnSnapshot && it.addOnSnapshot.length > 0 && (
+                          <p className="text-[11px] text-bodySecondary mt-0.5">
+                            + {it.addOnSnapshot.map((a) => a.label).join(", ")}
+                          </p>
+                        )}
+                      </div>
+                      <span className="text-xs font-semibold text-charcoal shrink-0">
+                        {formatINR(it.lineTotal)}
+                      </span>
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#eadccc] pt-4 text-lg font-bold text-charcoal">
-                <span>Total Amount:</span>
-                <span>{formatINR(detail.data.total)}</span>
+
+              {/* Billing Breakdown */}
+              <div className="space-y-1 text-xs text-bodySecondary">
+                <div className="flex justify-between">
+                  <span>Subtotal</span>
+                  <span>{formatINR(detail.data.subtotal)}</span>
+                </div>
+                {Number(detail.data.deliveryFee) > 0 && (
+                  <div className="flex justify-between">
+                    <span>Delivery fee</span>
+                    <span>{formatINR(detail.data.deliveryFee)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span>Taxes (GST)</span>
+                  <span>{formatINR(detail.data.tax)}</span>
+                </div>
+                <div className="flex items-center justify-between border-t border-[#eadccc] pt-2 text-sm font-bold text-charcoal">
+                  <span>Total Amount</span>
+                  <span className="text-brand-red font-heading text-base font-extrabold">{formatINR(detail.data.total)}</span>
+                </div>
               </div>
+
+              {/* Action Buttons for quick status changes */}
               {detailTransitions.length > 0 && (
-                <div className="sticky bottom-0 -mx-4 flex flex-col gap-2 border-t border-border-default bg-white/95 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] backdrop-blur sm:flex-row sm:flex-wrap lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none lg:backdrop-blur-0">
+                <div className="sticky bottom-0 -mx-4 flex flex-col gap-2 border-t border-border-default bg-white px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] sm:flex-row sm:flex-wrap lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none">
                   {detailTransitions.map((next) => (
                     <OrderActionButton
                       key={next}
                       status={next}
-                      className="sm:w-auto"
+                      className="flex-1"
                       onClick={() => doTransition(next)}
-                      isLoading={updateStatus.isPending}
+                      isLoading={updateStatus.isPending || isUpdating}
                     />
                   ))}
                 </div>

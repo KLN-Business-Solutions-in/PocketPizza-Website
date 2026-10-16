@@ -100,90 +100,69 @@ export function KanbanBoard({
             e.preventDefault();
             onSelectOrder?.(order.id);
           }}
-          className={`group relative flex min-w-0 items-center justify-between gap-3 rounded-xl border bg-white p-3 text-body transition-all ${
+          className={`group relative flex flex-col min-w-0 gap-2 rounded-xl border bg-white p-3.5 transition-all cursor-pointer ${
             isSelected
-              ? "border-2 border-brand-red bg-blushTint/50 shadow-sm"
-              : "border-border-default hover:border-brand-red/30 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red"
+              ? "border-2 border-brand-red bg-blushTint/30 shadow-md ring-2 ring-brand-red/10"
+              : "border-border-default hover:border-brand-red/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red"
           }`}
         >
-          <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0 flex items-center gap-2">
-              <span className="truncate font-heading text-h4 font-bold text-charcoal">{order.orderNumber}</span>
+          {/* Header row: Order ID, status, and Price */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="truncate font-heading text-sm font-bold text-charcoal">
+                {order.orderNumber}
+              </span>
               <span
-                className={`shrink-0 rounded-full px-2 py-0.5 text-tag font-semibold ${statusColor[order.status]}`}
+                className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold tracking-wide ${statusColor[order.status]}`}
               >
-                {order.status}
+                {order.status.replaceAll("_", " ")}
               </span>
             </div>
-            <div className="flex min-w-0 items-center gap-2 sm:justify-end">
-              <p className="min-w-0 truncate text-body font-semibold text-charcoal">{order.customer.name}</p>
-              <span className={`shrink-0 rounded-full px-2.5 py-1 text-tag font-semibold ${order.orderType === "DELIVERY" ? "bg-blushTint text-brand-red" : "bg-neutralTint text-bodySecondary"}`}>
-                {typeLabel}
-              </span>
-              <span className="shrink-0 font-heading text-h4 font-bold text-brand-red">{formatINR(order.total)}</span>
-            </div>
+            <span className="shrink-0 font-heading text-sm font-extrabold text-brand-red">
+              {formatINR(order.total)}
+            </span>
           </div>
-          <div className="mt-1 flex min-w-0 items-center justify-between gap-3 border-t border-border-default pt-2 sm:hidden lg:hidden">
-            <span className="text-caption text-bodySecondary">{formatTimeAgo(order.createdAt)}</span>
-            <span className="text-caption text-bodySecondary">{itemCount} {itemCount === 1 ? "item" : "items"}</span>
-            <span className="text-caption text-bodySecondary">{order.customer.phone}</span>
+
+          {/* Customer & Type row */}
+          <div className="flex items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="truncate font-medium text-charcoal text-xs">
+                {order.customer.name}
+              </span>
+              <span className="text-bodySecondary text-[11px]">
+                • {order.customer.phone}
+              </span>
+            </div>
+            <span
+              className={`shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+                order.orderType === "DELIVERY"
+                  ? "bg-blushTint text-brand-red border border-brand-red/20"
+                  : "bg-neutralTint text-bodySecondary"
+              }`}
+            >
+              {typeLabel}
+            </span>
+          </div>
+
+          {/* Bottom row: Time, items summary count */}
+          <div className="flex items-center justify-between gap-2 border-t border-border-default/60 pt-2 text-[11px] text-bodySecondary">
+            <span className="flex items-center gap-1">
+              <svg className="w-3.5 h-3.5 text-mutedGray" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {formatTimeAgo(order.createdAt)}
+            </span>
+            <span className="truncate font-medium text-charcoal/80">
+              {itemCount} {itemCount === 1 ? "item" : "items"}
+              {order.items && order.items.length > 0 && (
+                <span className="text-mutedGray font-normal ml-1">
+                  ({order.items.slice(0, 2).map((it) => it.nameSnapshot).filter(Boolean).join(", ")}
+                  {order.items.length > 2 ? "…" : ""})
+                </span>
+              )}
+            </span>
           </div>
         </div>
-
-        {isSelected && (
-          <div className="mt-2 rounded-xl border border-border-default bg-cream-bg/60 p-3 text-body">
-            <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <p className="text-caption font-bold text-bodySecondary uppercase tracking-wider mb-1">Customer</p>
-                <p className="text-body text-charcoal">{order.customer.name}</p>
-                <p className="mt-1 text-caption text-bodySecondary">{order.customer.phone}</p>
-              </div>
-              <div>
-                <p className="text-caption font-bold text-bodySecondary uppercase tracking-wider mb-1">Type</p>
-                <p className="text-body text-charcoal">{typeLabel}</p>
-                <p className="mt-1 text-caption text-bodySecondary">{formatTimeAgo(order.createdAt)}</p>
-              </div>
-              <div className="sm:col-span-2">
-                <p className="text-caption font-bold text-bodySecondary uppercase tracking-wider mb-1">Items</p>
-                <ul className="space-y-1">
-                  {(order.items ?? []).map((item, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm text-charcoal">
-                      <span className="shrink-0 font-semibold text-brand-red">{item.quantity}×</span>
-                      <span className="break-words">{item.nameSnapshot}</span>
-                      {item.variantSnapshot && (
-                        <span className="ml-1 text-caption text-bodySecondary">({item.variantSnapshot})</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            <div className="mt-4 flex items-center justify-end gap-2">
-              {transitions.includes("CONFIRMED") && (
-                <OrderActionButton
-                  status="CONFIRMED"
-                  label="Accept"
-                  tone="success"
-                  disabled={isUpdating || updatingId === order.id}
-                  isLoading={updatingId === order.id}
-                  onClick={(e) => handleTransition(order.id, "CONFIRMED", e)}
-                  className="w-auto"
-                />
-              )}
-              {transitions.includes("CANCELLED") && (
-                <OrderActionButton
-                  status="CANCELLED"
-                  label="Reject"
-                  disabled={isUpdating || updatingId === order.id}
-                  isLoading={updatingId === order.id}
-                  onClick={(e) => handleTransition(order.id, "CANCELLED", e)}
-                  className="w-auto"
-                />
-              )}
-            </div>
-          </div>
-        )}
       </div>
     );
   };
