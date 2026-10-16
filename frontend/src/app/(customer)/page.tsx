@@ -77,59 +77,43 @@ export default function HomePage() {
         <Bestsellers />
       </section>
 
-      {/* Craft / About */}
-      <section
-        id="about"
-        className="mx-auto grid max-w-6xl scroll-mt-20 items-center gap-8 px-5 pb-16 md:grid-cols-2 md:gap-10 md:px-10"
-      >
-        <div className="relative h-72 overflow-hidden rounded-2xl shadow-card md:h-96">
-          <Image
-            src="https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?w=1200&q=80"
-            alt="Hands dusting pizza dough with flour"
-            fill
-            sizes="(min-width:768px) 50vw, 100vw"
-            className="object-cover"
-          />
-        </div>
-        <div>
-          <h2 className="font-heading text-h2 font-extrabold text-charcoal md:text-h1-alt">
-            Our Sourdough, Our Craft
-          </h2>
-          <p className="mt-4 text-body leading-relaxed text-bodySecondary">
-            Every base starts with a 48-hour slow-fermented sourdough, hand-stretched to order and
-            fired for 180 seconds in our wood-fired deck oven. No shortcuts, no frozen dough —
-            just naturally proofed crust with an open, airy crumb.
-          </p>
-          <p className="mt-3 text-body leading-relaxed text-bodySecondary">
-            We top it with San Marzano tomatoes, fresh mozzarella, and produce delivered daily,
-            then get it to your door while the crust still crackles.
-          </p>
-          <Link
-            href="/menu"
-            className="mt-6 inline-flex items-center justify-center rounded-full bg-charcoal px-6 py-3 font-heading text-button font-semibold text-white transition-colors hover:bg-charcoal-alt"
-          >
-            Taste the craft
-          </Link>
-        </div>
-      </section>
-
-      {/* Contact strip (anchor for navbar "Contact") */}
+      {/* Contact strip (compact — /contact carries the full block) */}
       <section id="contact" className="mx-auto max-w-6xl scroll-mt-20 px-5 pb-16 md:px-10">
         <div className="rounded-2xl bg-white p-6 shadow-card ring-1 ring-border-default md:p-8">
-          <h2 className="font-heading text-h3 font-extrabold text-charcoal">Find us & order</h2>
+          <h2 className="font-heading text-h3 font-extrabold text-charcoal">Find us</h2>
           <p className="mt-2 text-body text-bodySecondary">
-            Open daily 11:30–23:00 · Free delivery under 1.5km · Call us on 020 7946 0128
+            Open daily 11:30–23:00 · Free delivery under 1.5km
+          </p>
+          <p className="mt-2 text-body text-bodySecondary">
+            Call us on{" "}
+            <a
+              href="tel:08788197404"
+              className="font-heading font-semibold text-brand-red hover:underline"
+            >
+              087881 97404
+            </a>
+            {" · "}
+            <a
+              href="mailto:pocketpizzawebsite@gmail.com"
+              className="font-heading font-semibold text-brand-red hover:underline"
+            >
+              pocketpizzawebsite@gmail.com
+            </a>
+          </p>
+          <p className="mt-1 text-body text-bodySecondary">
+            Shop no.2, opp, Amba Mata Mandir- Raj Basera Society Rd, Sukhsagar
+            Nagar, Hastinapuram, Pune, Maharashtra 411046
           </p>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row">
             <Link
               href="/menu"
-              className="inline-flex items-center justify-center rounded-full bg-brand-red px-6 py-3 font-heading text-button font-semibold text-white transition-colors hover:bg-red-700"
+              className="inline-flex w-full items-center justify-center rounded-full bg-brand-red px-6 py-3 font-heading text-button font-semibold text-white transition-colors hover:bg-red-700 sm:w-fit"
             >
               Order now
             </Link>
             <Link
               href="/cart"
-              className="inline-flex items-center justify-center rounded-full bg-blushTint px-6 py-3 font-heading text-button font-semibold text-brand-red transition-colors hover:bg-brand-red hover:text-white"
+              className="inline-flex w-full items-center justify-center rounded-full bg-blushTint px-6 py-3 font-heading text-button font-semibold text-brand-red transition-colors hover:bg-brand-red hover:text-white sm:w-fit"
             >
               View cart
             </Link>
