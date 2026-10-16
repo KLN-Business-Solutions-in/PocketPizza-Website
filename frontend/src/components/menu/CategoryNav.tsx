@@ -40,40 +40,40 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({
     <nav className="w-full lg:w-64 flex-shrink-0 sticky top-16 lg:top-20">
       {/* Mobile & Tablet: Horizontal Scrollable Chips */}
       <div className="flex lg:hidden overflow-x-auto gap-2 pb-2 scrollbar-none no-scrollbar -mx-4 px-4 sticky top-16 bg-cream-bg/95 backdrop-blur z-30 pt-2 border-b border-border-default">
+        {categoryChip("all", "All Items", activeCategoryId === "all")}
+        {sorted.map((cat) => categoryChip(cat.id, cat.name, activeCategoryId === cat.id))}
         <button
           onClick={() => onToggleVeg(!vegOnly)}
           className={cn(
-            "whitespace-nowrap px-3 py-1.5 rounded-xl text-label font-heading font-semibold transition-all border",
+            "whitespace-nowrap shrink-0 px-3 py-1.5 rounded-xl text-label font-heading font-semibold transition-all border",
             vegOnly
               ? "bg-[#25D366] text-white border-[#25D366] shadow-card"
               : "bg-white text-charcoal border-border-default hover:bg-neutralTint"
           )}
         >
-          Veg Only
+          Veg
         </button>
-        {categoryChip("all", "All Items", activeCategoryId === "all")}
-        {sorted.map((cat) => (
-          categoryChip(cat.id, cat.name, activeCategoryId === cat.id)
-        ))}
       </div>
 
       {/* Desktop: Fixed/Sticky Vertical Sidebar */}
       <div className="hidden lg:flex flex-col gap-1 sticky top-20 bg-white p-3 rounded-xl border border-border-default shadow-card">
-        <h2 className="px-3 py-2 text-caption font-bold text-mutedGray uppercase tracking-wider">
-          Categories
-        </h2>
-        <button
-          onClick={() => onToggleVeg(!vegOnly)}
-          className={cn(
-            "w-full text-left px-3.5 py-2.5 rounded-md text-button font-heading font-semibold transition-all flex items-center justify-between border",
-            vegOnly
-              ? "bg-[#25D366] text-white border-[#25D366] shadow-card"
-              : "text-charcoal hover:bg-neutralTint border-border-default"
-          )}
-        >
-          <span>Veg Only</span>
-          {vegOnly ? "●" : "○"}
-        </button>
+        <div className="flex items-center justify-between gap-2 px-3 py-2">
+          <h2 className="text-caption font-bold text-mutedGray uppercase tracking-wider">
+            Categories
+          </h2>
+          <button
+            onClick={() => onToggleVeg(!vegOnly)}
+            className={cn(
+              "shrink-0 whitespace-nowrap px-2.5 py-1 rounded-xl text-label font-heading font-semibold transition-all border",
+              vegOnly
+                ? "bg-[#25D366] text-white border-[#25D366] shadow-card"
+                : "bg-white text-charcoal border-border-default hover:bg-neutralTint"
+            )}
+          >
+            Veg
+          </button>
+        </div>
+        {categoryChip("all", "All Items", activeCategoryId === "all")}
         {sorted.map((cat) => (
           <button
             key={cat.id}
