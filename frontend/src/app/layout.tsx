@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
-import { MSWProvider } from "@/components/ui/MSWProvider";
 import { QueryProvider } from "@/components/ui/QueryProvider";
 import { ToastProvider } from "@/components/ui/ToastProvider";
+import { GlobalLoadingBar } from "@/components/ui/GlobalLoadingBar";
 
 export const metadata: Metadata = {
   title: "Pokket Pizza",
@@ -17,11 +17,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${outfit.variable} ${inter.variable}`}>
       <body className="bg-cream-bg font-body text-charcoal antialiased">
-        <MSWProvider>
-          <QueryProvider>
-            <ToastProvider>{children}</ToastProvider>
-          </QueryProvider>
-        </MSWProvider>
+        <QueryProvider>
+          <GlobalLoadingBar />
+          <ToastProvider>{children}</ToastProvider>
+        </QueryProvider>
       </body>
     </html>
   );

@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import { PHASE_PRODUCTION_BUILD } from "next/constants";
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: [
@@ -33,12 +32,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default function config(phase: string): NextConfig {
-  // Fail the build loudly: MSW must never ship enabled in a production bundle.
-  if (phase === PHASE_PRODUCTION_BUILD && process.env.NEXT_PUBLIC_USE_MOCKS === "true") {
-    throw new Error(
-      "NEXT_PUBLIC_USE_MOCKS must be unset for production builds (msw would intercept real API traffic)."
-    );
-  }
-  return nextConfig;
-}
+export default nextConfig;

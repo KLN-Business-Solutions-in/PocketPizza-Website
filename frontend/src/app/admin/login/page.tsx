@@ -75,7 +75,6 @@ function LoginForm() {
             <h1 className="mt-5 font-heading text-h3 font-bold text-charcoal">
               Restaurant Admin
             </h1>
-            <p className="mt-1 text-caption text-bodySecondary">Enter credentials to access terminal</p>
           </header>
 
           {searchParams.get("reason") === "expired" && (
