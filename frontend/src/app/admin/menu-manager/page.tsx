@@ -465,7 +465,7 @@ export default function MenuManagerPage() {
                   type="button"
                   onClick={() => setSelectedCategoryId(category.id)}
                   aria-pressed={isSelected}
-                  className={`w-auto min-w-max shrink-0 rounded-full border px-4 py-2.5 text-left transition-colors xl:w-full xl:min-w-0 xl:rounded-xl xl:p-4 ${isSelected ? "border-brand-red bg-status-errorBg" : "border-border-default bg-white hover:bg-cream-bg"}`}
+                  className={`w-auto min-w-max shrink-0 rounded-full border px-3 py-2 text-sm text-left transition-colors xl:w-full xl:min-w-0 xl:rounded-xl xl:p-3 ${isSelected ? "border-brand-red bg-status-errorBg" : "border-border-default bg-white hover:bg-cream-bg"}`}
                 >
                   <span className="block whitespace-nowrap font-heading font-bold text-charcoal xl:whitespace-normal">{category.name}</span>
                   <span className="mt-1 hidden text-caption text-bodySecondary xl:block">{activeCount} active products</span>
@@ -559,9 +559,9 @@ function ProductRow({
         <span className="font-semibold">{formatINR(basePrice)}</span>
       </div>
       <div className="flex items-center justify-end md:justify-start">
-        <Button size="sm" className={`relative h-7 w-12 min-w-0 overflow-hidden px-0 text-transparent ${isActive ? "bg-brand-red" : "bg-border-default"}`} variant={isActive ? "danger" : "primary"} onClick={onToggle} disabled={toggling} aria-label={`${isActive ? "Disable" : "Enable"} ${name}`} role="switch" aria-checked={isActive}>
+        <Button size="sm" className={`relative h-6 w-10 min-w-0 overflow-hidden px-0 text-transparent ${isActive ? "bg-brand-red" : "bg-border-default"}`} variant={isActive ? "danger" : "primary"} onClick={onToggle} disabled={toggling} aria-label={`${isActive ? "Disable" : "Enable"} ${name}`} role="switch" aria-checked={isActive}>
           <span className="sr-only">{toggling ? "Updating" : isActive ? "Disable" : "Enable"}</span>
-          <span aria-hidden="true" className={`absolute left-1 top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${isActive ? "translate-x-5" : ""}`} />
+          <span aria-hidden="true" className={`absolute left-1 top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${isActive ? "translate-x-4" : ""}`} />
         </Button>
       </div>
       <Button type="button" size="sm" variant="outline" onClick={onEdit} className="grid h-10 w-10 place-items-center p-0" aria-label={`Edit ${name}`}>
