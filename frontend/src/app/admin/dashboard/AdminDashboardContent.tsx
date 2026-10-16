@@ -164,7 +164,7 @@ export function AdminDashboardContent() {
         <ErrorState message="Failed to load orders." onRetry={() => orders.refetch()} />
       )}
 
-      <div className="grid min-w-0 gap-4 lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)_360px] xl:items-start">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[260px_minmax(0,1fr)_360px] xl:items-start">
         <aside className="min-w-0 rounded-xl border border-border-default bg-white p-3 shadow-card lg:sticky lg:top-24 lg:p-4">
           <h2 className="hidden px-2 pb-3 font-heading text-h4 font-bold text-charcoal lg:block">Orders</h2>
           <nav aria-label="Order filters" className="hidden space-y-1 lg:block">
@@ -221,8 +221,8 @@ export function AdminDashboardContent() {
           </div>
         </aside>
 
-        <section className="min-w-0 space-y-3">
-          <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 rounded-xl border border-border-default bg-white p-3 sm:p-4">
+        <section className="min-w-0 space-y-2">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 rounded-xl border border-border-default bg-white p-2 sm:p-3">
             <div>
               <h2 className="font-heading text-h4 font-bold text-charcoal">Live Orders</h2>
               <p className="mt-1 text-caption text-bodySecondary">
@@ -232,7 +232,7 @@ export function AdminDashboardContent() {
             <select
               value={typeFilter ?? ""}
               onChange={(e) => setTypeFilter((e.target.value || undefined) as OrderType | undefined)}
-              className="min-w-0 max-w-full rounded-lg border border-border-default bg-white px-3 py-2 text-caption font-medium text-charcoal focus:outline-none focus:ring-2 focus:ring-brand-red/20 lg:hidden"
+              className="min-w-0 max-w-full rounded-lg border border-border-default bg-white px-2.5 py-1.5 text-caption font-medium text-charcoal focus:outline-none focus:ring-2 focus:ring-brand-red/20 lg:hidden"
               aria-label="Filter by order type"
             >
               <option value="">All types</option>
@@ -241,14 +241,16 @@ export function AdminDashboardContent() {
               <option value="DINE_IN">Dine-in</option>
             </select>
           </div>
-          <KanbanBoard
-            orders={boardOrders}
-            selectedId={selectedId}
-            onSelectOrder={setSelectedId}
-            onUpdateStatus={handleUpdateStatus}
-            isUpdating={isUpdating}
-            emptyMessage={EMPTY_MESSAGES[statusFilter]}
-          />
+          <div className="min-w-0 h-[56vh] sm:h-[70vh] overflow-y-auto pr-1 rounded-lg border-t border-border-default">
+            <KanbanBoard
+              orders={boardOrders}
+              selectedId={selectedId}
+              onSelectOrder={setSelectedId}
+              onUpdateStatus={handleUpdateStatus}
+              isUpdating={isUpdating}
+              emptyMessage={EMPTY_MESSAGES[statusFilter]}
+            />
+          </div>
         </section>
 
         <aside className={`${selectedId ? "fixed inset-0 z-[100] flex min-h-0 flex-col bg-cream-bg p-0 pt-[env(safe-area-inset-top)] lg:static lg:z-auto lg:col-span-2 lg:block lg:rounded-xl lg:border lg:border-border-default lg:bg-white lg:p-6 lg:shadow-card xl:sticky xl:top-24 xl:col-span-1 xl:p-6" : "hidden rounded-xl border border-border-default bg-white p-4 shadow-card lg:col-span-2 lg:block xl:sticky xl:top-24 xl:col-span-1 sm:p-6"}`}>
