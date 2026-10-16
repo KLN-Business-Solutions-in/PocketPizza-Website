@@ -13,6 +13,7 @@ import type { MenuItem } from "@shared/contract/contract";
 export function MenuContent() {
   const { categories, products, isLoading, isError, error, refetch } = useMenuFlat();
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("all");
+  const [vegFilter, setVegFilter] = useState<"all" | "veg" | "non-veg">("all");
   const [selected, setSelected] = useState<MenuItem | null>(null);
 
   // Day 4: if anything already in the cart went inactive, drop it and toast —
@@ -20,10 +21,15 @@ export function MenuContent() {
   useCartReconcile();
 
   const filteredProducts = useMemo(() => {
-    if (selectedCategoryId === "all") return products;
-    const cat = categories.find((c) => c.id === selectedCategoryId);
-    return cat?.items ?? [];
-  }, [products, categories, selectedCategoryId]);
+    let list = products;
+    if (selectedCategoryId !== "all") {
+      const cat = categories.find((c) => c.id === selectedCategoryId);
+      list = cat?.items ?? [];
+    }
+    if (vegFilter === "veg") list = list.filter((p) => p.isVeg);
+    else if (vegFilter === "non-veg") list = list.filter((p) => !p.isVeg);
+    return list;
+  }, [products, categories, selectedCategoryId, vegFilter]);
 
   return (
     <div className="space-y-6 pb-12">
@@ -45,6 +51,8 @@ export function MenuContent() {
             categories={categories}
             activeCategoryId={selectedCategoryId}
             onSelectCategory={setSelectedCategoryId}
+            vegFilter={vegFilter}
+            onSelectVeg={setVegFilter}
           />
         )}
 

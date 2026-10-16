@@ -276,8 +276,8 @@ export default function MenuManagerPage() {
   const savePending = editingProduct ? updateProduct.isPending : createProduct.isPending;
 
   return (
-    <div className="min-w-0 space-y-5 pb-12 sm:space-y-6">
-      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="min-w-0 space-y-4 pb-8 sm:space-y-5">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h1 className="break-words text-h2 font-heading font-bold">Menu Manager</h1>
           <p className="mt-1 break-words text-body text-bodySecondary">
@@ -411,8 +411,8 @@ export default function MenuManagerPage() {
             <div className="space-y-2">
               {variants.map((variant, index) => (
                 <div key={index} className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(88px,0.42fr)_36px] items-start gap-2">
-                  <Input aria-label={`Variant ${index + 1} name`} value={variant.label} onChange={(event) => setVariants((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, label: event.target.value } : row))} maxLength={100} error={inlineErrors[`variants.${index}.label`]} className="h-12 rounded-lg" />
-                  <Input aria-label={`Variant ${index + 1} price delta`} value={variant.priceDelta} onChange={(event) => setVariants((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, priceDelta: event.target.value } : row))} placeholder="+₹ 0" error={inlineErrors[`variants.${index}.priceDelta`]} className="h-12 min-w-0 rounded-lg" />
+                  <Input aria-label={`Variant ${index + 1} name`} value={variant.label} onChange={(event) => setVariants((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, label: event.target.value } : row))} maxLength={100} error={inlineErrors[`variants.${index}.label`]} className="h-10 rounded-lg" />
+                  <Input aria-label={`Variant ${index + 1} price delta`} value={variant.priceDelta} onChange={(event) => setVariants((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, priceDelta: event.target.value } : row))} placeholder="+₹ 0" error={inlineErrors[`variants.${index}.priceDelta`]} className="h-10 min-w-0 rounded-lg" />
                   <button type="button" aria-label={`Remove variant ${index + 1}`} onClick={() => setVariants((rows) => rows.filter((_, rowIndex) => rowIndex !== index))} className="grid h-9 w-9 place-items-center rounded-full border border-border-default text-bodySecondary hover:border-brand-red hover:text-brand-red focus:outline-none focus:ring-2 focus:ring-brand-red">×</button>
                 </div>
               ))}
@@ -427,15 +427,15 @@ export default function MenuManagerPage() {
             <div className="space-y-2">
               {addOns.map((addOn, index) => (
                 <div key={index} className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(88px,0.42fr)_36px] items-start gap-2">
-                  <Input aria-label={`Add-on ${index + 1} name`} value={addOn.label} onChange={(event) => setAddOns((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, label: event.target.value } : row))} maxLength={100} error={inlineErrors[`addOns.${index}.label`]} className="h-12 rounded-lg" />
-                  <Input aria-label={`Add-on ${index + 1} price`} value={addOn.price} onChange={(event) => setAddOns((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, price: event.target.value } : row))} placeholder="+₹ 0" error={inlineErrors[`addOns.${index}.price`]} className="h-12 min-w-0 rounded-lg" />
+                  <Input aria-label={`Add-on ${index + 1} name`} value={addOn.label} onChange={(event) => setAddOns((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, label: event.target.value } : row))} maxLength={100} error={inlineErrors[`addOns.${index}.label`]} className="h-10 rounded-lg" />
+                  <Input aria-label={`Add-on ${index + 1} price`} value={addOn.price} onChange={(event) => setAddOns((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, price: event.target.value } : row))} placeholder="+₹ 0" error={inlineErrors[`addOns.${index}.price`]} className="h-10 min-w-0 rounded-lg" />
                   <button type="button" aria-label={`Remove add-on ${index + 1}`} onClick={() => setAddOns((rows) => rows.filter((_, rowIndex) => rowIndex !== index))} className="grid h-9 w-9 place-items-center rounded-full border border-border-default text-bodySecondary hover:border-brand-red hover:text-brand-red focus:outline-none focus:ring-2 focus:ring-brand-red">×</button>
                 </div>
               ))}
             </div>
           </section>
 
-          <div className="sticky bottom-0 z-10 -mx-4 flex flex-col gap-3 border-t border-border-default bg-white/95 px-4 py-4 backdrop-blur sm:-mx-8 sm:flex-row sm:justify-end sm:px-8">
+          <div className="sticky bottom-0 z-10 -mx-4 flex flex-col gap-2 border-t border-border-default bg-white/95 px-4 py-3 backdrop-blur sm:-mx-8 sm:flex-row sm:justify-end sm:px-8">
             <Button type="button" variant="outline" className="h-12 w-full rounded-lg px-6 text-body sm:w-auto" onClick={() => { clearEditor(); setEditorOpen(false); }}>
               Discard Changes
             </Button>
@@ -453,7 +453,7 @@ export default function MenuManagerPage() {
       {menu.isError && <ErrorState message="Failed to load admin menu." onRetry={() => menu.refetch()} />}
 
       <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(270px,0.8fr)_minmax(0,1.5fr)]">
-        <Card className="min-w-0 overflow-hidden p-3 sm:p-6">
+        <Card className="min-w-0 overflow-hidden p-2 sm:p-4">
           <h2 className="font-heading text-h3 font-bold">Categories</h2>
           <div className="mt-4 flex min-w-0 gap-2 overflow-x-auto pb-2 xl:flex-col xl:gap-3 xl:overflow-visible xl:pb-0">
             {categories.map((category) => {
@@ -477,7 +477,7 @@ export default function MenuManagerPage() {
           </div>
         </Card>
 
-        <Card className="min-w-0 p-4 sm:p-6">
+        <Card className="min-w-0 p-3 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border-default pb-4">
             <div className="flex min-w-0 items-center gap-2">
               <h2 className="break-words font-heading text-h3 font-bold">{selectedCategory?.name ?? "Products"}</h2>
@@ -546,9 +546,9 @@ function ProductRow({
   toggling: boolean;
 }) {
   return (
-    <li className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_40px] items-center gap-x-3 gap-y-2 rounded-xl border border-border-default bg-white p-3 text-body md:my-2 md:grid-cols-[minmax(0,1fr)_100px_100px_100px] md:rounded-none md:border-x-0 md:border-b-0 md:px-3 md:py-4">
+    <li className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_40px] items-center gap-x-3 gap-y-2 rounded-xl border border-border-default bg-white p-2 text-body md:my-2 md:grid-cols-[minmax(0,1fr)_100px_100px_100px] md:rounded-none md:border-x-0 md:border-b-0 md:px-2 md:py-3">
       <div className="col-span-3 flex min-w-0 items-center gap-3 md:col-span-1">
-        {imageUrl ? <img src={imageUrl} alt="" className="h-14 w-14 shrink-0 rounded-lg border border-border-default object-cover" /> : <div aria-hidden="true" className="h-14 w-14 shrink-0 rounded-lg border border-border-default bg-cream-bg" />}
+        {imageUrl ? <img src={imageUrl} alt="" className="h-12 w-12 shrink-0 rounded-lg border border-border-default object-cover" /> : <div aria-hidden="true" className="h-12 w-12 shrink-0 rounded-lg border border-border-default bg-cream-bg" />}
         <span className="min-w-0 break-words">
           <span className={`block font-semibold ${isActive ? "" : "line-through text-mutedGray"}`}>{name}</span>
           <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold ${isVeg ? "bg-status-successBg text-status-success" : "bg-status-errorBg text-brand-red"}`}>{isVeg ? "Veg" : "Non-Veg"}</span>
