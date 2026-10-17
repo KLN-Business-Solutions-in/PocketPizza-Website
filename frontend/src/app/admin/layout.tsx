@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAdminLogout, useAdminSession } from "@/lib/api/auth";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/ToastProvider";
+import { Logo } from "@/components/ui/Logo";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -52,7 +53,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Top Admin Navigation Header */}
       <header className="sticky top-0 z-40 border-b border-border-default bg-white shadow-card">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 sm:px-6 lg:px-8">
-          <Link href="/admin/dashboard" className="flex shrink-0 items-center">
+          <Link href="/admin/dashboard" className="flex shrink-0 items-center gap-2">
+            <Logo className="h-9 w-auto" />
             <span className="font-heading text-xl font-extrabold tracking-tight text-brand-red">
               Pokket Pizza
             </span>

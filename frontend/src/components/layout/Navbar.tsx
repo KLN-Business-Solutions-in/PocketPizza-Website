@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useCartHydrated, useCartStore } from "@/lib/cart/store";
 import { useCustomerLogout, useCustomerSession } from "@/lib/api/customerAuth";
 import { useToast } from "@/components/ui/ToastProvider";
+import { Logo } from "@/components/ui/Logo";
 
 const links = [
   { href: "/", label: "Home" },
@@ -105,12 +106,7 @@ export default function Navbar() {
     <header className="sticky top-0 z-40 border-b border-border-default bg-white">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-3 sm:px-5 md:h-16 md:px-10">
         <Link href="/" className="flex shrink-0 items-center gap-1.5 whitespace-nowrap font-heading text-base font-extrabold tracking-tight sm:gap-2 sm:text-lg">
-          <span
-            className="grid h-7 w-7 place-items-center rounded-md bg-brand-red text-sm text-white"
-            aria-hidden="true"
-          >
-            🍕
-          </span>
+          <Logo className="h-8 w-auto sm:h-9" />
           <span className="text-charcoal">
             POKKET <span className="text-brand-red">PIZZA</span>
           </span>

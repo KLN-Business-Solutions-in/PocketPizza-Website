@@ -7,6 +7,7 @@ import { ApiError } from "@/lib/api/client";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/LayoutPrimitives";
+import { Logo } from "@/components/ui/Logo";
 
 /**
  * Admin login — Backend Master Reference §9.
@@ -61,15 +62,7 @@ function LoginForm() {
         <Card className="w-full rounded-modal border border-border-default bg-white p-6 shadow-elevated sm:p-8">
           <header className="mb-7 text-center">
             <div className="flex items-center justify-center gap-2.5" aria-label="Pokket Pizza">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-brand-red text-white">
-                <svg aria-hidden="true" className="h-7 w-7" viewBox="0 0 32 32" fill="none">
-                  <path d="M7 23.5 13.2 6.8c.3-.8 1.3-1.1 2-.5l12 10.8c.8.7.5 2-.5 2.3L8.4 25.2c-1 .3-1.8-.7-1.4-1.7Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-                  <path d="m12.1 20.9 7.3-2.2-5.1-4.6-2.2 6.8Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-                  <circle cx="17.3" cy="17.1" r="1" fill="currentColor" />
-                  <circle cx="20.4" cy="19.2" r="1" fill="currentColor" />
-                  <circle cx="15.3" cy="19.9" r="1" fill="currentColor" />
-                </svg>
-              </span>
+              <Logo className="h-12 w-auto" />
               <span className="font-heading text-[1.55rem] font-extrabold tracking-tight text-charcoal">POKKET <span className="text-brand-red">PIZZA</span></span>
             </div>
             <h1 className="mt-5 font-heading text-h3 font-bold text-charcoal">
