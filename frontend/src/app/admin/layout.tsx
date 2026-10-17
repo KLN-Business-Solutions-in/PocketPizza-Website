@@ -27,7 +27,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   if (session.isLoading || session.data?.ok === false) {
-    return <p className="p-6 text-body text-bodySecondary">Checking your sessionâ€¦</p>;
+    return <p className="p-6 text-body text-bodySecondary">Checking your session…</p>;
   }
 
   const handleLogout = async () => {
@@ -78,9 +78,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             })}
           </nav>
           <div className="flex shrink-0 items-center gap-3">
-            <span className="hidden text-caption font-medium text-bodySecondary sm:inline-block">
-              Logged in as <strong className="text-charcoal">Admin</strong>
-            </span>
             <Button
               variant="outline"
               size="sm"

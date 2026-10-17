@@ -60,12 +60,13 @@ async function main() {
   // --------------------------------------------------
 
   const restaurant = await prisma.restaurant.create({
-    data: {
-      name: "Pokket Pizza",
-      phone: "9998887770",
-      address: "Pune, Maharashtra",
-      deliveryFee: 30,
-    },
+data: {
+        name: "Pokket Pizza",
+        phone: "9998887770",
+        whatsappNumber: "8788197404",
+        address: "Pune, Maharashtra",
+        deliveryFee: 30,
+      },
   });
 
   // --------------------------------------------------
