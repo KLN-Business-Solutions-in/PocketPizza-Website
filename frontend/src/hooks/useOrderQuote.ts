@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useCartStore } from "@/lib/cart/store";
-import { quotePayload, useQuote } from "@/lib/api/orders";
+import { quotePayload, useQuote, type QuoteDeliveryLocation } from "@/lib/api/orders";
 import type { QuoteResponse } from "@shared/contract/contract";
 import { issuesByLineIndex, parseQuoteRejections, type QuoteIssue } from "@/lib/quote/rejections";
 
@@ -45,14 +45,25 @@ export type OrderQuote = {
   retry: () => void;
 };
 
-export function useOrderQuote(): OrderQuote {
+/**
+ * `deliveryLocation` is the customer's captured coordinates (checkout "use my
+ * location"), part of the quote payload: the server prices DELIVERY by
+ * straight-line distance when they are present. Changing them re-quotes like
+ * any other cart change.
+ */
+export function useOrderQuote(
+  deliveryLocation?: QuoteDeliveryLocation | null
+): OrderQuote {
   const lines = useCartStore((s) => s.lines);
   const orderType = useCartStore((s) => s.orderType);
   const { mutate, data, error, isPending: isInFlight, variables } = useQuote();
 
   const signature = React.useMemo(
-    () => (lines.length > 0 ? JSON.stringify(quotePayload(orderType, lines)) : ""),
-    [orderType, lines]
+    () =>
+      lines.length > 0
+        ? JSON.stringify(quotePayload(orderType, lines, deliveryLocation))
+        : "",
+    [deliveryLocation, orderType, lines]
   );
 
   // Signature of the payload most recently sent. A ref, not state: it is
@@ -71,7 +82,7 @@ export function useOrderQuote(): OrderQuote {
     // or every mutation settle.
     if (lastSent.current === signature) return;
 
-    const current = quotePayload(orderType, lines);
+    const current = quotePayload(orderType, lines, deliveryLocation);
     // The very first quote of a session is sent immediately so the summary just
     // appears; later churn is debounced.
     const delay = variables === undefined ? 0 : DEBOUNCE_MS;
@@ -80,11 +91,11 @@ export function useOrderQuote(): OrderQuote {
       mutate(current);
     }, delay);
     return () => clearTimeout(timer);
-  }, [signature, orderType, lines, mutate, variables]);
+  }, [signature, deliveryLocation, orderType, lines, mutate, variables]);
 
   const retry = React.useCallback(() => {
-    if (lines.length > 0) mutate(quotePayload(orderType, lines));
-  }, [mutate, lines, orderType]);
+    if (lines.length > 0) mutate(quotePayload(orderType, lines, deliveryLocation));
+  }, [deliveryLocation, mutate, lines, orderType]);
 
   // react-query holds the payload that produced the current data/error.
   const answered = variables ? JSON.stringify(variables) : null;

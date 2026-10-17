@@ -16,6 +16,13 @@ import { randomBytes } from 'crypto';
 import { AppError, ConflictError, NotFoundError, ValidationError } from '../../utils/errors';
 import { normalizeIndianPhone } from '../../utils/phone';
 import { toFixed2 } from '../../utils/decimal';
+import { env } from '../../config/env';
+import {
+  calculateDeliveryFee,
+  isValidCoordinates,
+  type Coordinates,
+} from '../../utils/deliveryDistance';
+import { Prisma } from '../../generated/prisma/client';
 import type { PhoneOrderListResponse } from './order.types';
 import {
   CUSTOMER_CONFIRMATION_TEMPLATE,
@@ -47,6 +54,68 @@ import type { ResolvedQuoteLine } from './order.types';
 
 type RestaurantPricing = NonNullable<Awaited<ReturnType<typeof findRestaurantPricing>>>;
 type OrderRow = NonNullable<Awaited<ReturnType<typeof findOrderByToken>>>;
+
+/**
+ * The shop's map pin, from server-side environment variables only
+ * (SHOP_LATITUDE/SHOP_LONGITUDE) — never from the customer's browser. Null
+ * when not configured; env validation already rejects a present-but-invalid
+ * value at boot, so anything non-null here is in range.
+ */
+const shopCoordinates: Coordinates | null = (() => {
+  const { SHOP_LATITUDE: latitude, SHOP_LONGITUDE: longitude } = env;
+  if (latitude === undefined || longitude === undefined) return null;
+  const shop = { latitude, longitude };
+  return isValidCoordinates(shop) ? shop : null;
+})();
+
+type ResolvedDelivery = { deliveryFee: Prisma.Decimal; distanceKm: number | null };
+
+/**
+ * Server-authoritative delivery fee (never trust a client-sent fee or total).
+ *
+ * - Non-delivery orders are always free.
+ * - DELIVERY with customer coordinates and a configured shop pin: free within
+ *   DELIVERY_RADIUS_KM, ₹30 strictly beyond it (raw distance decides the fee;
+ *   only the stored/reported distance is rounded to 2dp).
+ * - DELIVERY without customer coordinates: the restaurant's configured flat
+ *   fee — the exact pre-distance behaviour, so older clients keep working.
+ * - DELIVERY with coordinates but no shop pin: a server misconfiguration;
+ *   refuse the request instead of charging a guessed fee.
+ */
+function resolveDelivery(
+  orderType: QuoteRequest['orderType'],
+  fallbackFee: Prisma.Decimal,
+  customer: Coordinates | null,
+): ResolvedDelivery {
+  if (orderType !== 'DELIVERY') {
+    return { deliveryFee: new Prisma.Decimal(0), distanceKm: null };
+  }
+  if (!customer) {
+    return { deliveryFee: fallbackFee, distanceKm: null };
+  }
+  if (!shopCoordinates) {
+    logger.error(
+      'delivery coordinates supplied but SHOP_LATITUDE/SHOP_LONGITUDE are not configured',
+    );
+    throw new AppError(
+      'DELIVERY_PRICING_UNAVAILABLE',
+      'Delivery pricing is unavailable right now. Please try again later.',
+      500,
+    );
+  }
+  const { distanceKm, deliveryFee } = calculateDeliveryFee(shopCoordinates, customer);
+  return {
+    deliveryFee: new Prisma.Decimal(deliveryFee),
+    distanceKm: Math.round(distanceKm * 100) / 100,
+  };
+}
+
+function addressCoordinates(address: CreateOrderRequest['address']): Coordinates | null {
+  if (!address || address.latitude === undefined || address.longitude === undefined) {
+    return null;
+  }
+  return { latitude: address.latitude, longitude: address.longitude };
+}
 
 export async function resolveCart(input: {
   orderType: QuoteRequest['orderType'];
@@ -131,7 +200,12 @@ export async function resolveCart(input: {
 
 export async function quoteOrder(input: QuoteRequest): Promise<QuoteResponse> {
   const { resolved, restaurant } = await resolveCart(input);
-  return computeQuote(resolved, input.orderType, restaurant.deliveryFee);
+  const delivery = resolveDelivery(
+    input.orderType,
+    restaurant.deliveryFee,
+    input.deliveryLocation ?? null,
+  );
+  return computeQuote(resolved, input.orderType, delivery.deliveryFee, delivery.distanceKm);
 }
 
 function isP2002(e: unknown): boolean {
@@ -188,6 +262,7 @@ function toCreateResponse(o: {
   status: string;
   subtotal: unknown;
   deliveryFee: unknown;
+  deliveryDistanceKm: unknown;
   tax: unknown;
   total: unknown;
 }): CreateOrderResponse {
@@ -197,6 +272,10 @@ function toCreateResponse(o: {
     status: o.status as CreateOrderResponse['status'],
     subtotal: toFixed2(String(o.subtotal)),
     deliveryFee: toFixed2(String(o.deliveryFee)),
+    deliveryDistanceKm:
+      o.deliveryDistanceKm === null || o.deliveryDistanceKm === undefined
+        ? null
+        : Number(o.deliveryDistanceKm),
     tax: toFixed2(String(o.tax)),
     total: toFixed2(String(o.total)),
   };
@@ -240,7 +319,12 @@ export async function createOrder(input: CreateOrderRequest): Promise<{
     throw err;
   }
 
-  const quote = computeQuote(resolved, input.orderType, restaurant.deliveryFee);
+  const delivery = resolveDelivery(
+    input.orderType,
+    restaurant.deliveryFee,
+    addressCoordinates(input.address),
+  );
+  const quote = computeQuote(resolved, input.orderType, delivery.deliveryFee, delivery.distanceKm);
 
   // Decimal(10,2) columns: reject oversized orders with a clean 400, not a DB overflow 500
   const MAX_ORDER_VALUE = 9999999999.99;
@@ -287,6 +371,7 @@ export async function createOrder(input: CreateOrderRequest): Promise<{
         notes: input.notes ?? null,
         subtotal: quote.subtotal,
         deliveryFee: quote.deliveryFee,
+        deliveryDistanceKm: delivery.distanceKm,
         tax: quote.tax,
         total: quote.total,
         items: orderItems,
@@ -351,6 +436,8 @@ function parseStoredAddress(raw: string | null): InvoiceResponse['address'] {
       landmark: typeof p.landmark === 'string' ? p.landmark : null,
       city: p.city,
       pincode: p.pincode,
+      latitude: typeof p.latitude === 'number' ? p.latitude : null,
+      longitude: typeof p.longitude === 'number' ? p.longitude : null,
     };
   } catch {
     return null;
@@ -471,6 +558,7 @@ function toAdminDetail(row: AdminOrderDetailRow): AdminOrderDetail {
     })),
     subtotal: toFixed2(row.subtotal.toString()),
     deliveryFee: toFixed2(row.deliveryFee.toString()),
+    deliveryDistanceKm: row.deliveryDistanceKm ?? null,
     tax: toFixed2(row.tax.toString()),
   };
 }

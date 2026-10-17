@@ -1,5 +1,4 @@
 import Image from "next/image";
-import Link from "next/link";
 import type { Metadata } from "next";
 import ContactForm from "@/components/contact/ContactForm";
 
@@ -30,8 +29,8 @@ const mapLinkHref = `https://www.google.com/maps/search/?api=1&query=${encodeURI
 export default function ContactPage() {
   return (
     <div className="-mx-5 -mt-6 md:-mx-10">
-      {/* Page hero */}
-      <section className="relative h-[260px] overflow-hidden md:h-[340px]">
+      {/* Page hero — full-bleed; content spans the banner width */}
+      <section className="relative left-1/2 h-[260px] w-screen -translate-x-1/2 overflow-hidden md:h-[340px]">
         <Image
           src="https://images.unsplash.com/photo-1513104890138-7c749659a591?w=1600&q=80"
           alt="Wood-fired artisan pizza"
@@ -41,7 +40,7 @@ export default function ContactPage() {
           className="object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/50 to-black/10" />
-        <div className="relative mx-auto flex h-full max-w-6xl flex-col justify-center px-5 text-white md:px-10">
+        <div className="relative flex h-full flex-col justify-center px-5 text-white md:px-10">
           <h1 className="font-heading text-h1-alt font-extrabold leading-[1.05] text-white md:text-display-l">
             Get in Touch
           </h1>
@@ -180,22 +179,6 @@ export default function ContactPage() {
             </div>
           </div>
         </div>
-
-        {/* Actions */}
-        <section className="mt-12 flex flex-col gap-3 sm:flex-row">
-          <Link
-            href="/menu"
-            className="inline-flex w-full items-center justify-center rounded-full bg-brand-red px-6 py-3 font-heading text-button font-semibold text-white transition-colors hover:bg-red-700 sm:w-fit"
-          >
-            Order Now
-          </Link>
-          <Link
-            href="/cart"
-            className="inline-flex w-full items-center justify-center rounded-full bg-blushTint px-6 py-3 font-heading text-button font-semibold text-brand-red transition-colors hover:bg-brand-red hover:text-white sm:w-fit"
-          >
-            View Cart
-          </Link>
-        </section>
       </div>
     </div>
   );
