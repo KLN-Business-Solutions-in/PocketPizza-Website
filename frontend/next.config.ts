@@ -24,7 +24,8 @@ const nextConfig: NextConfig = {
       {
         source: "/:path*",
         headers: [
-          { key: "X-Frame-Options", value: "DENY" },
+          // No X-Frame-Options here: the Contact page embeds a Google Maps
+          // iframe, which requires the header to be absent for /contact.
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
         ],

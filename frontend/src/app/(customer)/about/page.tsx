@@ -23,6 +23,9 @@ const storyParagraphs = [
   "Founded with a simple dream to bring affordable, high-quality, and delicious Italian-style pizzas to the neighborhood, Pokket Pizza has grown from a humble local spot into a community favorite. We believe in keeping things fresh, friendly, and flavor-packed.",
 ];
 
+const foundersQuote =
+  "We wanted to build a pizza brand that feels like a cozy artisanal neighborhood joint but operates with modern delivery speed. No compromises, just incredible crusts.";
+
 const doughParagraphs = [
   "What sets us apart from the rest? Our signature, freshly handmade pizza dough.",
   "Every single day, our kitchen starts from scratch. We don't believe in frozen shortcuts or pre-made crusts.",
@@ -41,14 +44,37 @@ const kitchenParagraphs = [
   "Community First — More than just a pizza place, we are a neighborhood kitchen dedicated to spreading joy through comfort food.",
 ];
 
+const galleryImages = [
+  {
+    src: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=800&q=80",
+    alt: "Hand kneading fresh sourdough dough",
+    caption: "Hand Kneading Dough",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1541745537411-b8046dc6d66c?w=800&q=80",
+    alt: "Wood-fired oven baking our pizzas",
+    caption: "Wood-Fired Oven",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=800&q=80",
+    alt: "Spreading tomato sauce on a pizza base",
+    caption: "Spreading Sauce",
+  },
+  {
+    src: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800&q=80",
+    alt: "Freshly baked artisan pizza",
+    caption: "Fresh Baked Pizza",
+  },
+];
+
 export default function AboutPage() {
   return (
     <div className="-mx-5 -mt-6 md:-mx-10">
       {/* Page hero */}
       <section className="relative h-[320px] overflow-hidden md:h-[400px]">
         <Image
-          src="https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?w=1600&q=80"
-          alt="Hands dusting pizza dough with flour"
+          src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1600&q=80"
+          alt="Pokket Pizza kitchen team at work"
           fill
           loading="eager"
           sizes="100vw"
@@ -57,7 +83,7 @@ export default function AboutPage() {
         <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/50 to-black/10" />
         <div className="relative mx-auto flex h-full max-w-6xl flex-col justify-center px-5 text-white md:px-10">
           <h1 className="font-heading text-h1-alt font-extrabold leading-[1.05] text-white md:text-display-l">
-            About Pokket Pizza — Crafting Freshness, One Slice at a Time
+            Our Story & Passion
           </h1>
         </div>
       </section>
@@ -73,14 +99,39 @@ export default function AboutPage() {
           </p>
         </section>
 
-        {/* Our story — charcoal dark section for storytelling (brand personality) */}
+        {/* Our heritage — charcoal dark section for storytelling (brand personality) */}
         <section className="mt-12 rounded-2xl bg-charcoal p-6 text-white shadow-card md:p-10">
-          <h2 className="font-heading text-h3 font-extrabold text-white md:text-h2">Our Story</h2>
-          {storyParagraphs.map((paragraph, index) => (
-            <p key={index} className="mt-4 text-body leading-relaxed text-white/85">
-              {paragraph}
-            </p>
-          ))}
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
+            <div className="lg:col-span-7">
+              <h2 className="font-heading text-h3 font-extrabold text-white md:text-h2">Our Heritage</h2>
+              {storyParagraphs.map((paragraph, index) => (
+                <p key={index} className="mt-4 text-body leading-relaxed text-white/85">
+                  {paragraph}
+                </p>
+              ))}
+            </div>
+            <figure className="flex flex-col justify-between rounded-2xl bg-white p-6 shadow-card lg:col-span-5">
+              <blockquote className="text-body italic leading-relaxed text-bodySecondary">
+                &ldquo;{foundersQuote}&rdquo;
+              </blockquote>
+              <figcaption className="mt-5 flex items-center gap-3">
+                <span
+                  aria-hidden="true"
+                  className="grid h-10 w-10 place-items-center rounded-full bg-blushTint font-heading text-label font-bold text-brand-red"
+                >
+                  M&amp;L
+                </span>
+                <span>
+                  <span className="block font-heading text-label font-bold text-charcoal">
+                    Marco &amp; Leo
+                  </span>
+                  <span className="block text-caption text-bodySecondary">
+                    Co-Founders, Pokket Pizza
+                  </span>
+                </span>
+              </figcaption>
+            </figure>
+          </div>
         </section>
 
         {/* The secret is in the dough */}
@@ -133,6 +184,50 @@ export default function AboutPage() {
               </li>
             ))}
           </ul>
+        </section>
+
+        {/* Gallery: store ambiance, pizza preparation and ingredients */}
+        <section className="mt-10">
+          <h2 className="font-heading text-h3 font-extrabold text-charcoal md:text-h2">
+            Behind the Scenes: How We Do It
+          </h2>
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {galleryImages.map((image, index) => (
+              <figure
+                key={index}
+                className="overflow-hidden rounded-2xl bg-white shadow-card ring-1 ring-border-default"
+              >
+                <div className="relative aspect-[4/3]">
+                  <Image
+                    src={image.src}
+                    alt={image.alt}
+                    fill
+                    sizes="(min-width:1024px) 25vw, (min-width:640px) 50vw, 100vw"
+                    className="object-cover"
+                  />
+                </div>
+                <figcaption className="px-4 py-2 text-caption text-bodySecondary">
+                  {image.caption}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        </section>
+
+        {/* CTA banner */}
+        <section className="mt-12 rounded-2xl bg-blushTint p-6 text-center shadow-card ring-1 ring-border-default md:p-10">
+          <h2 className="font-heading text-h3 font-extrabold text-brand-red md:text-h2">
+            Hungry for Real Sourdough?
+          </h2>
+          <p className="mx-auto mt-3 max-w-xl text-body leading-relaxed text-bodySecondary">
+            Get premium wood-fired goodness delivered to your doorstep in minutes.
+          </p>
+          <Link
+            href="/menu"
+            className="mt-6 inline-flex w-full items-center justify-center rounded-full bg-brand-red px-6 py-3 font-heading text-button font-semibold text-white transition-colors hover:bg-red-700 sm:w-fit"
+          >
+            View Our Menu
+          </Link>
         </section>
 
         {/* Contact strip — kept compact, links onward to /contact */}
