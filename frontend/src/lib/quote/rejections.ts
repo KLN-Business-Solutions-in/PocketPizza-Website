@@ -85,7 +85,7 @@ export function parseQuoteRejections(error: unknown): QuoteIssue[] {
       if (issues.some((i) => i.index >= 0)) return issues;
       return [{ index: -1, reason: strings.join(" "), kind: "unknown" }];
     }
-    // Object-shaped details (MSW mock, or a future richer envelope).
+    // Object-shaped details (a richer error envelope).
     const objectText = details
       .map((d) => {
         const o = d as { field?: string; message?: string };
