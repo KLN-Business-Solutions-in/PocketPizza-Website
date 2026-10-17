@@ -13,6 +13,7 @@ import {
   quotePayload,
   useCreateOrder,
   usePreflightQuote,
+  type QuoteDeliveryLocation,
 } from "@/lib/api/orders";
 import { ApiError } from "@/lib/api/client";
 import { formatINR } from "@/lib/money";
@@ -74,8 +75,17 @@ function CheckoutContent() {
   const removeLine = useCartStore((s) => s.removeLine);
   const clear = useCartStore((s) => s.clear);
 
+  // The customer's captured delivery coordinates (optional). Browser state,
+  // never persisted: the server prices DELIVERY by straight-line distance when
+  // they are present and falls back to the restaurant's flat fee otherwise.
+  const [deliveryLocation, setDeliveryLocation] = React.useState<QuoteDeliveryLocation | null>(
+    null
+  );
+  const [locationNotice, setLocationNotice] = React.useState<string | null>(null);
+  const [isLocating, setIsLocating] = React.useState(false);
+
   useCartReconcile();
-  const quote = useOrderQuote();
+  const quote = useOrderQuote(deliveryLocation);
   const createOrder = useCreateOrder();
   // A second, independent quote mutation used only for the pre-submit price
   // check. `useOrderQuote` dedupes by payload and will not re-ask for an
@@ -127,6 +137,44 @@ function CheckoutContent() {
     setOrderType(next);
     setValue("orderType", next, { shouldValidate: true, shouldDirty: true });
     setSubmitError(null);
+  };
+
+  /**
+   * Optional "use my location" capture for the distance-based delivery fee.
+   * The coordinates ride along with the quote and the order; denying the
+   * permission (or an unsupported browser) simply keeps the flat fallback fee.
+   */
+  const captureLocation = () => {
+    if (!("geolocation" in navigator)) {
+      setLocationNotice(
+        "This browser cannot share a location. The standard delivery fee applies."
+      );
+      return;
+    }
+    setIsLocating(true);
+    setLocationNotice(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setDeliveryLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+        setIsLocating(false);
+        setLocationNotice(null);
+      },
+      () => {
+        setIsLocating(false);
+        setLocationNotice(
+          "We could not read your location. The standard delivery fee applies."
+        );
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  };
+
+  const clearLocation = () => {
+    setDeliveryLocation(null);
+    setLocationNotice(null);
   };
 
   // `items` is required by the shared schema but is not a user input — it comes
@@ -196,7 +244,7 @@ function CheckoutContent() {
         // the customer never saw.
         let fresh: QuoteResponse;
         try {
-          fresh = await preflight.mutateAsync(quotePayload(orderType, lines));
+          fresh = await preflight.mutateAsync(quotePayload(orderType, lines, deliveryLocation));
         } catch (err) {
           // The re-quote was itself rejected — an item went inactive between the
           // page load and the press. Surface the same per-line reasons the live
@@ -220,11 +268,14 @@ function CheckoutContent() {
         }
         setPriceChange(null);
 
-        const body = toCreateOrderRequest({
-          ...values,
-          items: cartItems,
-          idempotencyKey,
-        });
+        const body = toCreateOrderRequest(
+          {
+            ...values,
+            items: cartItems,
+            idempotencyKey,
+          },
+          deliveryLocation
+        );
         const res = await createOrder.mutateAsync(body);
         setCustomerPhone(values.customer.phone);
         clear();
@@ -250,6 +301,7 @@ function CheckoutContent() {
       cartItems,
       clear,
       createOrder,
+      deliveryLocation,
       idempotencyKey,
       itemsSignature,
       lines,
@@ -401,6 +453,29 @@ function CheckoutContent() {
                   error={errors.address?.pincode?.message}
                   {...register("address.pincode")}
                 />
+              </div>
+
+              {/* Optional straight-line delivery-fee capture: free within
+                  1.5 km, ₹30 beyond. Without it the standard fee applies. */}
+              <div className="mt-3 flex flex-wrap items-center gap-3 border-t pt-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={captureLocation}
+                  isLoading={isLocating}
+                >
+                  {deliveryLocation ? "Update my location" : "Use my location"}
+                </Button>
+                {deliveryLocation && (
+                  <Button type="button" variant="ghost" size="sm" onClick={clearLocation}>
+                    Remove
+                  </Button>
+                )}
+                <p className="basis-full text-caption text-bodySecondary" aria-live="polite">
+                  {locationNotice ??
+                    "Optional — share your location for free delivery within 1.5 km. It is used only to calculate the delivery fee."}
+                </p>
               </div>
             </Card>
           )}

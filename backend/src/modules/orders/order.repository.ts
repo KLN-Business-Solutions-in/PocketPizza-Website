@@ -42,6 +42,7 @@ export type PlaceOrderInput = {
   notes: string | null;
   subtotal: string;
   deliveryFee: string;
+  deliveryDistanceKm: number | null;
   tax: string;
   total: string;
   items: {
@@ -90,6 +91,7 @@ export async function placeOrder(input: PlaceOrderInput) {
           notes: input.notes,
           subtotal: input.subtotal,
           deliveryFee: input.deliveryFee,
+          deliveryDistanceKm: input.deliveryDistanceKm,
           tax: input.tax,
           total: input.total,
           items: {
