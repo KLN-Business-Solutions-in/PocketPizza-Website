@@ -11,9 +11,9 @@ import { Logo } from "@/components/ui/Logo";
 
 const links = [
   { href: "/", label: "Home" },
-  { href: "/#about", label: "About" },
+  { href: "/about", label: "About" },
   { href: "/menu", label: "Menu" },
-  { href: "/#contact", label: "Contact" },
+  { href: "/contact", label: "Contact" },
 ];
 
 function BagIcon({ className }: { className?: string }) {
@@ -99,6 +99,8 @@ export default function Navbar() {
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
     if (href === "/menu") return pathname === "/menu" || pathname.startsWith("/menu");
+    if (href === "/about") return pathname === "/about";
+    if (href === "/contact") return pathname === "/contact";
     return false;
   };
 
