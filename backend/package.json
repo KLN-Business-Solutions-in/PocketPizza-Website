@@ -7,7 +7,8 @@
     "dev": "tsx watch src/server.ts",
     "build": "prisma generate --config ../prisma7.config.ts && tsc",
     "start": "node dist/server.js",
-    "lint": "eslint src/**/*.ts"
+    "lint": "eslint src/**/*.ts",
+    "test": "node --import tsx --test src/utils/deliveryDistance.test.ts"
   },
   "engines": {
     "node": ">=18.0.0"

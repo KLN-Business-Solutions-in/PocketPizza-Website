@@ -32,8 +32,8 @@ export function MenuSubNavbar({
   const sortedCategories = [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
-    <div className="sticky top-14 md:top-16 z-30 -mx-5 px-5 md:-mx-10 md:px-10 bg-white/95 backdrop-blur-md border-b border-border-default shadow-sm transition-all py-2.5">
-      <div className="mx-auto max-w-6xl flex flex-wrap items-center justify-between gap-2.5">
+    <div className="sticky top-14 md:top-16 z-30 ml-[calc(50%_-_50vw)] mr-[calc(50%_-_50vw)] bg-white/95 backdrop-blur-md border-b border-border-default shadow-sm transition-all py-2.5">
+      <div className="mx-auto w-full max-w-6xl px-5 md:px-10 flex flex-wrap items-center justify-between gap-2.5">
         {/* Search input with search icon */}
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-mutedGray">

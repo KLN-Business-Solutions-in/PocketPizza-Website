@@ -57,9 +57,16 @@ export function usePreflightQuote() {
   return useMutation({ mutationFn: postQuote });
 }
 
+/** Customer coordinates captured client-side, used for the delivery fee. */
+export type QuoteDeliveryLocation = {
+  latitude: number;
+  longitude: number;
+};
+
 export function quotePayload(
   orderType: OrderType,
-  lines: { menuItemId: string; variantId?: string; addOnIds: string[]; quantity: number }[]
+  lines: { menuItemId: string; variantId?: string; addOnIds: string[]; quantity: number }[],
+  deliveryLocation?: QuoteDeliveryLocation | null
 ): QuoteRequest {
   return {
     orderType,
@@ -70,6 +77,8 @@ export function quotePayload(
       const base = { menuItemId: l.menuItemId, addOnIds: l.addOnIds ?? [], quantity: l.quantity };
       return l.variantId === undefined ? base : { ...base, variantId: l.variantId };
     }),
+    // Coordinates only affect DELIVERY pricing; never sent for PICKUP/DINE_IN.
+    ...(orderType === "DELIVERY" && deliveryLocation ? { deliveryLocation } : {}),
   };
 }
 

@@ -61,10 +61,10 @@ export function MenuContent() {
   }, [products, categories, selectedCategoryId, dietary, searchQuery, sortBy]);
 
   return (
-    <div className="space-y-6 pb-12">
-      {/* Intro hero banner */}
-      <section className="rounded-3xl bg-charcoal text-white p-6 md:p-8 shadow-card overflow-hidden relative">
-        <div className="relative z-10 max-w-2xl">
+    <div className="-mt-6 pb-12">
+      {/* Intro hero banner — full-bleed; content spans the banner width */}
+      <section className="relative left-1/2 w-screen -translate-x-1/2 bg-charcoal text-white p-6 md:p-8 overflow-hidden">
+        <div className="relative z-10">
           <span className="inline-block rounded-full bg-brand-red/90 px-3 py-1 font-heading text-xs font-bold tracking-wider uppercase text-white mb-2">
             Chef Crafted Menu
           </span>
@@ -97,7 +97,7 @@ export function MenuContent() {
       )}
 
       {/* Content Area */}
-      <div className="w-full">
+      <div className="mt-6 w-full">
         {/* Loading State */}
         {isLoading && <MenuSkeleton />}
 

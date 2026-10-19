@@ -101,7 +101,18 @@ export function QuoteSummary({
 
           <dl className="mt-3 space-y-1 border-t pt-3 text-body">
             <Row label="Subtotal" value={formatINR(shown.subtotal)} />
-            {orderType === "DELIVERY" && <Row label="Delivery fee" value={formatINR(shown.deliveryFee)} />}
+            {orderType === "DELIVERY" && (
+              <Row
+                // The server sends the straight-line km it priced with; the
+                // label carries it so the fee is never a surprise.
+                label={
+                  shown.deliveryDistanceKm != null
+                    ? `Delivery fee (${shown.deliveryDistanceKm.toFixed(1)} km)`
+                    : "Delivery fee"
+                }
+                value={shown.deliveryFee === "0.00" ? "FREE" : formatINR(shown.deliveryFee)}
+              />
+            )}
             <Row label="Tax" value={formatINR(shown.tax)} />
             <div className="flex justify-between border-t pt-2 font-heading font-extrabold">
               <dt>Total</dt>
@@ -110,11 +121,6 @@ export function QuoteSummary({
           </dl>
         </>
       )}
-
-      <p className="mt-3 text-caption text-mutedGray">
-        Priced by the server using the same engine that places your order — the cart page figures are
-        indicative only. Prices in INR.
-      </p>
     </Card>
   );
 }
