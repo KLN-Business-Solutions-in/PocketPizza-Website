@@ -16,7 +16,6 @@ interface MenuSubNavbarProps {
   onChangeSearch: (query: string) => void;
   sortBy: "popular" | "price-asc" | "price-desc" | "name";
   onChangeSortBy: (sort: "popular" | "price-asc" | "price-desc" | "name") => void;
-  totalCount: number;
 }
 
 export function MenuSubNavbar({
@@ -29,7 +28,6 @@ export function MenuSubNavbar({
   onChangeSearch,
   sortBy,
   onChangeSortBy,
-  totalCount,
 }: MenuSubNavbarProps) {
   const sortedCategories = [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
 
@@ -164,10 +162,6 @@ export function MenuSubNavbar({
               </svg>
             </div>
           </div>
-
-          <span className="hidden sm:inline-block text-caption text-bodySecondary font-medium pl-1">
-            ({totalCount})
-          </span>
         </div>
       </div>
     </div>

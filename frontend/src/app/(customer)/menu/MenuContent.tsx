@@ -93,7 +93,6 @@ export function MenuContent() {
           onChangeSearch={setSearchQuery}
           sortBy={sortBy}
           onChangeSortBy={setSortBy}
-          totalCount={filteredProducts.length}
         />
       )}
 
