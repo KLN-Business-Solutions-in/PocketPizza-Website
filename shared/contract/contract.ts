@@ -126,6 +126,20 @@ export type MenuResponse = {
 export type ProductDetailResponse = MenuItem;
 
 // 5. ORDERS — Quote
+/**
+ * Customer delivery location. Validated here so an impossible point (NaN,
+ * out of range) can never reach the distance calculation. The pair is
+ * all-or-nothing — enforced where nested (see createOrderRequestSchema).
+ */
+export const coordinatesSchema = z.object({
+  latitude: z.number().min(-90, 'must be between -90 and 90').max(90, 'must be between -90 and 90'),
+  longitude: z
+    .number()
+    .min(-180, 'must be between -180 and 180')
+    .max(180, 'must be between -180 and 180'),
+});
+export type DeliveryCoordinates = z.infer<typeof coordinatesSchema>;
+
 export const quoteItemSchema = z.object({
   menuItemId: z.string().min(1),
   variantId: z.string().optional(),
@@ -142,6 +156,11 @@ export const quoteItemSchema = z.object({
 export const quoteRequestSchema = z.object({
   orderType: OrderType,
   items: z.array(quoteItemSchema).min(1).max(50, 'at most 50 line items per order'),
+  // Customer's coordinates, captured client-side (e.g. a "use my location"
+  // button). Optional: without them the server falls back to the restaurant's
+  // configured flat delivery fee. The shop's own coordinates are never sent by
+  // the client — they live in backend environment variables.
+  deliveryLocation: coordinatesSchema.optional(),
 });
 
 export type QuoteRequest = z.infer<typeof quoteRequestSchema>;
@@ -164,6 +183,11 @@ export type QuoteResponse = {
   subtotal: string;
   /** @decimal "30.00" */
   deliveryFee: string;
+  /**
+   * Straight-line distance in km used for the delivery fee (rounded to 2dp),
+   * null for non-delivery orders and when no customer coordinates were given.
+   */
+  deliveryDistanceKm?: number | null;
   /** @decimal "0.00" */
   tax: string;
   /** @decimal "828.00" */
@@ -177,6 +201,14 @@ export const addressSchema = z.object({
   landmark: z.string().max(255).optional(),
   city: z.string().trim().min(1).max(100),
   pincode: z.string().trim().regex(/^\d{6}$/, 'must be a 6-digit Indian PIN code'),
+  // Coordinates of the delivery address, when the customer captured them.
+  // Both-or-neither is enforced in createOrderRequestSchema.
+  latitude: z.number().min(-90, 'must be between -90 and 90').max(90, 'must be between -90 and 90').optional(),
+  longitude: z
+    .number()
+    .min(-180, 'must be between -180 and 180')
+    .max(180, 'must be between -180 and 180')
+    .optional(),
 });
 
 export const indianPhoneSchema = z
@@ -203,6 +235,14 @@ export const createOrderRequestSchema = z
     if (value.orderType === 'DELIVERY' && !value.address) {
       ctx.addIssue({ code: 'custom', path: ['address'], message: 'required for DELIVERY orders' });
     }
+    const { latitude, longitude } = value.address ?? {};
+    if ((latitude === undefined) !== (longitude === undefined)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['address'],
+        message: 'latitude and longitude must be provided together',
+      });
+    }
   });
 
 export type CreateOrderRequest = z.infer<typeof createOrderRequestSchema>;
@@ -213,6 +253,8 @@ export type CreateOrderResponse = {
   status: OrderStatus;
   subtotal: string;
   deliveryFee: string;
+  /** Straight-line km used for the delivery fee (2dp); null when not computed. */
+  deliveryDistanceKm?: number | null;
   tax: string;
   total: string;
 };
@@ -271,6 +313,9 @@ export type InvoiceResponse = {
     landmark: string | null;
     city: string;
     pincode: string;
+    /** Captured delivery coordinates, when the customer shared them. */
+    latitude?: number | null;
+    longitude?: number | null;
   } | null;
   items: InvoiceItem[];
   subtotal: string;
@@ -388,6 +433,9 @@ export type AdminOrderDetail = AdminOrderSummary & {
     landmark: string | null;
     city: string;
     pincode: string;
+    /** Captured delivery coordinates, when the customer shared them. */
+    latitude?: number | null;
+    longitude?: number | null;
   } | null;
   notes: string | null;
   items: InvoiceItem[];
@@ -399,6 +447,8 @@ export type AdminOrderDetail = AdminOrderSummary & {
   }[];
   subtotal: string;
   deliveryFee: string;
+  /** Straight-line km used for the delivery fee (2dp); null when not computed. */
+  deliveryDistanceKm?: number | null;
   tax: string;
 };
 

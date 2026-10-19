@@ -11,6 +11,7 @@ export function computeQuote(
   lines: ResolvedQuoteLine[],
   orderType: OrderType,
   deliveryFee: Prisma.Decimal,
+  deliveryDistanceKm: number | null = null,
 ): QuoteResponse {
   const priced = lines.map((line) => {
     let unit = line.basePrice;
@@ -75,6 +76,7 @@ export function computeQuote(
     items,
     subtotal: toFixed2(subtotal.toString()),
     deliveryFee: toFixed2(fee.toString()),
+    deliveryDistanceKm: orderType === 'DELIVERY' ? deliveryDistanceKm : null,
     tax: toFixed2(tax.toString()),
     total: toFixed2(total.toString()),
   };

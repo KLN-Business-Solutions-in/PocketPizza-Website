@@ -58,8 +58,15 @@ export type { CreateOrderRequest };
 /**
  * Strip the fields that must not reach the wire (blank optional address parts)
  * and hand the API exactly `CreateOrderRequest`.
+ *
+ * `coordinates` are the customer's captured delivery location (optional). They
+ * ride inside the DELIVERY address so the stored order — and the invoice —
+ * carries the same point the fee was computed from.
  */
-export function toCreateOrderRequest(values: CheckoutValues): CreateOrderRequest {
+export function toCreateOrderRequest(
+  values: CheckoutValues,
+  coordinates?: { latitude: number; longitude: number } | null
+): CreateOrderRequest {
   const { orderType, items, customer, address, notes, idempotencyKey } = values;
   return {
     orderType,
@@ -73,6 +80,9 @@ export function toCreateOrderRequest(values: CheckoutValues): CreateOrderRequest
             ...(address.landmark?.trim() ? { landmark: address.landmark.trim() } : {}),
             city: address.city.trim(),
             pincode: address.pincode.trim(),
+            ...(coordinates
+              ? { latitude: coordinates.latitude, longitude: coordinates.longitude }
+              : {}),
           },
         }
       : {}),
