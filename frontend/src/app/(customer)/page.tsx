@@ -12,8 +12,8 @@ export const metadata: Metadata = {
 const features = [
   { title: "Handmade Sourdough Base", text: "48hr slow-proof base handcrafted fresh daily." },
   { title: "Free Rapid Delivery", text: "Hot & fresh, delivered to your door in under 30 minutes." },
-  { title: "Premium Fresh Ingredients", text: "San Marzano tomatoes & fresh fior di latte." },
-  { title: "Fast Fire Baking", text: "Baked at over 450°C in under 90 seconds." },
+  { title: "Premium Fresh Ingredients", text: "Olives, ripe tomatoes & fresh paneer, prepped daily." },
+  { title: "Fast Fire Baking", text: "Baked at over 450°C in under 10 minutes." },
 ];
 
 const testimonials = [
@@ -49,17 +49,14 @@ export default function HomePage() {
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/50 to-black/10" />
         <div className="relative mx-auto flex h-full max-w-6xl flex-col justify-center px-5 text-white md:px-10">
-          <span className="w-fit rounded-md bg-brand-red px-3 py-1 font-heading text-tag font-semibold uppercase tracking-wide">
-            London&apos;s Finest Artisan Pizza
-          </span>
-          <h1 className="mt-5 font-heading text-h1-alt font-extrabold leading-[1.05] md:text-display-l">
+          <h1 className="font-heading text-h1-alt font-extrabold leading-[1.05] md:text-display-l">
             Handmade Pizza.
             <br />
             Delivered Fresh.
           </h1>
-          <p className="mt-4 max-w-md text-body text-white/85">
-            Craving naturally proofed, wood-fired dough? Hand-stretched sourdough bases topped with
-            premium imported fresh ingredients.
+          <p className="mt-4 max-w-xl text-body text-white/85">
+            Desi twist meets wood-fired perfection — hand-stretched sourdough bases loaded with
+            bold Indian flavours and authentic Italian soul.
           </p>
           <Link
             href="/menu"
