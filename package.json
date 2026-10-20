@@ -33,8 +33,5 @@
     "workerDirectory": [
       "public"
     ]
-  },
-  "allowScripts": {
-    "argon2@0.45.1": true
   }
 }

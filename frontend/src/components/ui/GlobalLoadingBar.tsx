@@ -32,11 +32,8 @@ export function GlobalLoadingBar() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (!busy) {
-      setVisible(false);
-      return;
-    }
-    const timer = setTimeout(() => setVisible(true), 150);
+    // Keep the 150ms show delay for fast requests; hide on the next tick.
+    const timer = setTimeout(() => setVisible(busy), busy ? 150 : 0);
     return () => clearTimeout(timer);
   }, [busy]);
 

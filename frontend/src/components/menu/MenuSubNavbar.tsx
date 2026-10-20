@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React from "react";
 import type { Category } from "@shared/contract/contract";
 import { cn } from "@/lib/utils";
 
@@ -146,7 +146,7 @@ export function MenuSubNavbar({
             <select
               value={sortBy}
               aria-label="Sort dishes"
-              onChange={(e) => onChangeSortBy(e.target.value as any)}
+              onChange={(e) => onChangeSortBy(e.target.value as MenuSubNavbarProps["sortBy"])}
               className="appearance-none rounded-full border border-border-default bg-neutralTint/60 py-1.5 pl-3 pr-8 text-xs font-semibold text-charcoal focus:border-brand-red focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-red/20 cursor-pointer"
             >
               <option value="popular">Popular</option>

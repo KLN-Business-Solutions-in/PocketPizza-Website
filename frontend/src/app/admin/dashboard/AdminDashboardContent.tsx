@@ -10,7 +10,7 @@ import {
 } from "@/lib/api/admin";
 import { useAdminSession } from "@/lib/api/auth";
 import { formatINR } from "@/lib/money";
-import { apiFetch, ApiError } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/client";
 import { Button } from "@/components/ui/Button";
 import { ErrorState } from "@/components/ui/LayoutPrimitives";
 import { KanbanBoard, KanbanOrder } from "@/components/admin/KanbanBoard";
@@ -69,7 +69,6 @@ export function AdminDashboardContent() {
   const detail = useAdminOrderDetail(selectedId ?? undefined);
   const updateStatus = useUpdateOrderStatus(selectedId ?? "");
   const [statusError, setStatusError] = React.useState<string | null>(null);
-  const [isUpdating, setIsUpdating] = React.useState(false);
 
   React.useEffect(() => {
     if (session.data?.ok === false) router.replace("/admin/login");
@@ -108,26 +107,6 @@ export function AdminDashboardContent() {
   const detailTransitions = detail.data
     ? getOrderTransitions(detail.data.status, detail.data.orderType)
     : [];
-  const handleUpdateStatus = async (id: string, nextStatus: OrderStatus) => {
-    setStatusError(null);
-    setIsUpdating(true);
-    try {
-      await apiFetch(`/admin/orders/${id}/status`, {
-        method: "PATCH",
-        body: JSON.stringify({ status: nextStatus }),
-      });
-      await orders.refetch();
-      if (selectedId === id) {
-        await detail.refetch();
-      }
-    } catch (err) {
-      const api = err as ApiError;
-      setStatusError(api?.message || "Status update failed.");
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
   const doTransition = async (next: OrderStatus) => {
     setStatusError(null);
     if (!selectedId || !detail.data) return;
@@ -246,8 +225,6 @@ export function AdminDashboardContent() {
               orders={boardOrders}
               selectedId={selectedId}
               onSelectOrder={setSelectedId}
-              onUpdateStatus={handleUpdateStatus}
-              isUpdating={isUpdating}
               emptyMessage={EMPTY_MESSAGES[statusFilter]}
             />
           </div>
@@ -389,7 +366,7 @@ export function AdminDashboardContent() {
                       status={next}
                       className="flex-1"
                       onClick={() => doTransition(next)}
-                      isLoading={updateStatus.isPending || isUpdating}
+                      isLoading={updateStatus.isPending}
                     />
                   ))}
                 </div>

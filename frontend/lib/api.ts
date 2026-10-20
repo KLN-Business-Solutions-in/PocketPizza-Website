@@ -1,7 +1,10 @@
 import type { ErrorEnvelope, SuccessEnvelope } from "@shared/contract/contract";
 
 export const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000/api/v1";
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  (process.env.NODE_ENV === "production"
+    ? "/api/v1"
+    : "http://localhost:4000/api/v1");
 
 export class ApiError extends Error {
   code: string;
@@ -112,7 +115,8 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   ) {
     if (typeof window !== "undefined" && window.location.pathname !== "/admin/login") {
       const redirectTo = window.location.pathname + window.location.search + window.location.hash;
-      window.location.href = `/admin/login?reason=expired&redirectTo=${encodeURIComponent(redirectTo)}`;
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign(`${window.location.origin}/admin/login?reason=expired&redirectTo=${encodeURIComponent(redirectTo)}`);
       // We still throw to prevent the caller from continuing execution
     }
   }

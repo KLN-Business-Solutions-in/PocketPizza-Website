@@ -2,7 +2,6 @@ import {config } from "dotenv";
 config({path: "backend/.env"});
 import { PrismaClient } from "../backend/src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import argon2 from "argon2";
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -32,7 +31,13 @@ async function main() {
     throw new Error("ADMIN_PASSWORD is not defined");
   }
 
-  const passwordHash = await argon2.hash(adminPassword);
+  const hashRows = await prisma.$queryRaw<Array<{ hash: string }>>`
+    SELECT crypt(${adminPassword}, gen_salt('bf', 12)) AS hash
+  `;
+  const passwordHash = hashRows[0]?.hash;
+  if (!passwordHash) {
+    throw new Error("Failed to hash admin password");
+  }
 
   // --------------------------------------------------
   // CLEAN EXISTING DEVELOPMENT DATA
