@@ -1,5 +1,5 @@
-import { Router } from 'express';
-import { ah } from '../../utils/async-handler';
+import { Hono } from 'hono';
+import { wrap, wrapMiddleware } from '../../http/express-adapter';
 import { requireCustomer } from '../../middleware/auth.middleware';
 import {
   customerLoginIpRateLimit,
@@ -16,16 +16,16 @@ import {
   customerSignupController,
 } from './auth.customer.controller';
 
-export const customerAuthRouter = Router();
+export const customerAuthRouter = new Hono();
 
-customerAuthRouter.post('/signup', customerSignupRateLimit, ah(customerSignupController));
+customerAuthRouter.post('/signup', customerSignupRateLimit, wrap(customerSignupController));
 customerAuthRouter.post(
   '/login',
   customerLoginIpRateLimit,
   customerLoginPhoneRateLimit,
   customerLoginRateLimit,
-  ah(customerLoginController),
+  wrap(customerLoginController),
 );
-customerAuthRouter.post('/refresh', refreshRateLimit, ah(customerRefreshController));
-customerAuthRouter.post('/logout', ah(customerLogoutController));
-customerAuthRouter.get('/me', requireCustomer, ah(customerMeController));
+customerAuthRouter.post('/refresh', refreshRateLimit, wrap(customerRefreshController));
+customerAuthRouter.post('/logout', wrap(customerLogoutController));
+customerAuthRouter.get('/me', wrapMiddleware(requireCustomer), wrap(customerMeController));

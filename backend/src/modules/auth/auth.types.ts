@@ -128,6 +128,7 @@ export type { LoginRequest, LoginResponse };
 declare global {
   namespace Express {
     interface Request {
+      id?: string;
       admin?: AuthPrincipal;
       customer?: CustomerPrincipal;
     }

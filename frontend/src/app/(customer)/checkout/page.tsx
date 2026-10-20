@@ -309,6 +309,7 @@ function CheckoutContent() {
       preflight,
       quote.isBlocked,
       router,
+      setCustomerPhone,
     ]
   );
 

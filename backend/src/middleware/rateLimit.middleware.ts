@@ -1,139 +1,156 @@
-import type { Request, Response } from 'express';
-import rateLimit from 'express-rate-limit';
+import type { Request } from 'express';
+import {
+  wrapMiddleware,
+  type ExpressStyleHandler,
+} from '../http/express-adapter';
+import { sendError } from '../utils/response';
 
-function rateLimitBody(message: string) {
-  return (req: Request, res: Response): void => {
-    res.status(429).json({
-      success: false,
-      error: { code: 'RATE_LIMITED', message },
-      requestId: String(req.id ?? ''),
-    });
+type Options = {
+  windowMs: number;
+  max: number;
+  message: string;
+  keyGenerator?: (req: Request) => string;
+  skipSuccessfulRequests?: boolean;
+};
+
+type Bucket = { count: number; resetAt: number };
+
+const buckets = new Map<string, Bucket>();
+
+function prune(now: number): void {
+  if (buckets.size <= 5_000) return;
+  for (const [key, bucket] of buckets) {
+    if (bucket.resetAt <= now) buckets.delete(key);
+  }
+}
+
+function createLimiter(options: Options): ExpressStyleHandler {
+  return async (req, res, next) => {
+    const now = Date.now();
+    const key = `${options.message}:${
+      options.keyGenerator ? options.keyGenerator(req) : req.ip ?? 'unknown'
+    }`;
+
+    let bucket = buckets.get(key);
+    if (!bucket || bucket.resetAt <= now) {
+      bucket = { count: 0, resetAt: now + options.windowMs };
+      buckets.set(key, bucket);
+      prune(now);
+    }
+
+    if (bucket.count >= options.max) {
+      res.setHeader('Retry-After', String(Math.max(1, Math.ceil((bucket.resetAt - now) / 1000))));
+      sendError(res as never, 'RATE_LIMITED', options.message, 429);
+      return;
+    }
+
+    await (next as unknown as () => Promise<void>)();
+
+    if (!options.skipSuccessfulRequests || res.statusCode >= 400) {
+      bucket.count += 1;
+    }
   };
 }
 
-export const globalRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: rateLimitBody('Too many requests'),
-});
+export const globalRateLimit = wrapMiddleware(
+  createLimiter({ windowMs: 15 * 60 * 1000, max: 1000, message: 'Too many requests' }),
+);
 
-export const loginRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => {
-    const raw = req.body?.email;
-    const email = typeof raw === 'string' ? raw.toLowerCase().trim() : 'unknown';
-    return `${req.ip}:${email}`;
-  },
-  handler: rateLimitBody('Too many login attempts'),
-});
+export const loginRateLimit = wrapMiddleware(
+  createLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: 'Too many login attempts',
+    keyGenerator: (req) => {
+      const raw = (req.body as { email?: unknown } | undefined)?.email;
+      const email = typeof raw === 'string' ? raw.toLowerCase().trim() : 'unknown';
+      return `${req.ip}:${email}`;
+    },
+  }),
+);
 
-export const orderCreateRateLimit = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: rateLimitBody('Too many order attempts'),
-});
+export const orderCreateRateLimit = wrapMiddleware(
+  createLimiter({
+    windowMs: 60 * 60 * 1000,
+    max: 20,
+    message: 'Too many order attempts',
+  }),
+);
 
-export const tokenLookupRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 30,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: rateLimitBody('Too many order lookup attempts'),
-});
+export const tokenLookupRateLimit = wrapMiddleware(
+  createLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    message: 'Too many order lookup attempts',
+  }),
+);
 
-// GET /orders/phone/:phone is enumerable by phone number, so two budgets:
-// one on the caller's IP (caps how fast any host can sweep numbers) and one
-// per phone *scoped to that IP* (stops hammering a single number). Keying the
-// phone budget on the phone alone would let anyone burn a victim's budget and
-// hide their own order list, so it deliberately stays IP-scoped. Every request
-// counts here — these are reads, there is no "failure" to isolate.
-export const phoneOrdersIpRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 60,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: rateLimitBody('Too many order lookup attempts'),
-});
+export const phoneOrdersIpRateLimit = wrapMiddleware(
+  createLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: 60,
+    message: 'Too many order lookup attempts',
+  }),
+);
 
-export const phoneOrdersPhoneRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 30,
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => `${req.ip}:${phoneRateLimitKey(req.params.phone)}`,
-  handler: rateLimitBody('Too many order lookup attempts'),
-});
+export const phoneOrdersPhoneRateLimit = wrapMiddleware(
+  createLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    message: 'Too many order lookup attempts',
+    keyGenerator: (req) => `${req.ip}:${phoneRateLimitKey(req.params.phone)}`,
+  }),
+);
 
-export const refreshRateLimit = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 30,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: rateLimitBody('Too many refresh attempts'),
-});
+export const refreshRateLimit = wrapMiddleware(
+  createLimiter({
+    windowMs: 60 * 60 * 1000,
+    max: 30,
+    message: 'Too many refresh attempts',
+  }),
+);
 
-export const customerSignupRateLimit = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 30,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: rateLimitBody('Too many signup attempts'),
-});
+export const customerSignupRateLimit = wrapMiddleware(
+  createLimiter({
+    windowMs: 60 * 60 * 1000,
+    max: 30,
+    message: 'Too many signup attempts',
+  }),
+);
 
-// canonical limiter key for an account: digits only, last 10 — so
-// 9876543210 / +919876543210 / 09876543210 / "98765 43210" all share one
-// budget instead of each getting a fresh one
 export function phoneRateLimitKey(raw: unknown): string {
   if (typeof raw !== 'string') return 'unknown';
   const digits = raw.replace(/\D/g, '');
   return digits.length > 0 ? digits.slice(-10) : 'unknown';
 }
 
-// All login limiters count FAILED attempts only (skipSuccessfulRequests → any
-// response < 400 is uncounted). Brute force is a stream of failures, so this is
-// the signal worth capping, while a customer who simply logs in successfully —
-// repeatedly, behind CGNAT/shared wifi, or via an app retry loop — is never
-// throttled. Raw request volume stays bounded by globalRateLimit.
-// Residual, accepted: if an attacker burns an account's failure budget from many
-// IPs, the rightful owner is throttled until the window expires. No limiter can
-// distinguish the two; account unlock/recovery is the real remedy (post-MVP).
-const COUNT_FAILURES_ONLY = { skipSuccessfulRequests: true } as const;
+export const customerLoginRateLimit = wrapMiddleware(
+  createLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    message: 'Too many login attempts',
+    keyGenerator: (req) =>
+      `${req.ip}:${phoneRateLimitKey((req.body as { phone?: unknown } | undefined)?.phone)}`,
+    skipSuccessfulRequests: true,
+  }),
+);
 
-export const customerLoginRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 30,
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => `${req.ip}:${phoneRateLimitKey(req.body?.phone)}`,
-  handler: rateLimitBody('Too many login attempts'),
-  ...COUNT_FAILURES_ONLY,
-});
+export const customerLoginIpRateLimit = wrapMiddleware(
+  createLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    message: 'Too many login attempts',
+    skipSuccessfulRequests: true,
+  }),
+);
 
-export const customerLoginIpRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: rateLimitBody('Too many login attempts'),
-  ...COUNT_FAILURES_ONLY,
-});
-
-// account-scoped: caps attempts against ONE phone regardless of how many
-// source IPs are used, so a botnet cannot fan out past the per-ip budgets
-// (OWASP: lockout counters must key on the account, not the source ip)
-export const customerLoginPhoneRateLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 30,
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => phoneRateLimitKey(req.body?.phone),
-  handler: rateLimitBody('Too many login attempts'),
-  ...COUNT_FAILURES_ONLY,
-});
+export const customerLoginPhoneRateLimit = wrapMiddleware(
+  createLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    message: 'Too many login attempts',
+    keyGenerator: (req) =>
+      phoneRateLimitKey((req.body as { phone?: unknown } | undefined)?.phone),
+    skipSuccessfulRequests: true,
+  }),
+);

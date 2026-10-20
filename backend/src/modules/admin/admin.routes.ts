@@ -1,18 +1,22 @@
-import { Router } from 'express';
+import { Hono } from 'hono';
+import { wrap } from '../../http/express-adapter';
 import { sendSuccess } from '../../utils/response';
 import { menuAdminRouter } from '../menu/menu.routes';
 import { orderAdminRouter } from '../orders/order.routes';
 import { reportAdminRouter } from '../reports/reports.routes';
 
-export const adminRouter = Router();
+export const adminRouter = new Hono();
 
-adminRouter.get('/ping', (req, res) => {
-  sendSuccess(res, {
-    ok: true,
-    adminId: req.admin?.id ?? null,
-  });
-});
+adminRouter.get(
+  '/ping',
+  wrap((req, res) => {
+    sendSuccess(res, {
+      ok: true,
+      adminId: req.admin?.id ?? null,
+    });
+  }),
+);
 
-adminRouter.use(menuAdminRouter);
-adminRouter.use(orderAdminRouter);
-adminRouter.use(reportAdminRouter);
+adminRouter.route('/', menuAdminRouter);
+adminRouter.route('/', orderAdminRouter);
+adminRouter.route('/', reportAdminRouter);

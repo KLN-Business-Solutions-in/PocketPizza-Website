@@ -1,6 +1,15 @@
 generator client {
   provider = "prisma-client"
   output   = "../backend/src/generated/prisma"
+  runtime  = "workerd"
+}
+
+// Node entrypoint (server.ts / tsx): the workerd client imports its query
+// compiler with the `?module` suffix, which only Wrangler understands.
+generator clientNode {
+  provider = "prisma-client"
+  output   = "../backend/src/generated/prisma-node"
+  runtime  = "nodejs"
 }
 
 datasource db {
