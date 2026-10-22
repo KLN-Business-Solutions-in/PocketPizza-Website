@@ -178,7 +178,7 @@ export function ProfileContent() {
                         setNameError(null);
                       }}
                     >
-                      Cancel
+                      Discard
                     </Button>
                   </div>
                 </div>

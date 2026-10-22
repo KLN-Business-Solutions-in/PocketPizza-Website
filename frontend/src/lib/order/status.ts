@@ -14,6 +14,10 @@ export const ORDER_POLL_INTERVAL_MS = 15_000;
 
 const TERMINAL: ReadonlySet<OrderStatus> = new Set<OrderStatus>(["COMPLETED", "CANCELLED"]);
 
+export function excludeCancelledOrders<T extends { status: OrderStatus }>(orders: readonly T[]): T[] {
+  return orders.filter((order) => order.status !== "CANCELLED");
+}
+
 export function isTerminalStatus(status: OrderStatus | undefined): boolean {
   return status !== undefined && TERMINAL.has(status);
 }
@@ -53,7 +57,7 @@ export function statusHint(status: OrderStatus, orderType: OrderType): string {
     case "COMPLETED":
       return "Enjoy. Thanks for ordering from Pokket Pizza!";
     case "CANCELLED":
-      return "This order was cancelled. If that wasn't expected, please call the store.";
+      return "This order is no longer active.";
     default:
       return "";
   }

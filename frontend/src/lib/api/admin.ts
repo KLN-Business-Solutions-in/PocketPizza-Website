@@ -1,6 +1,7 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { apiFetch } from "./client";
 import { useToast } from "@/components/ui/ToastProvider";
 import type {
@@ -52,6 +53,82 @@ export function useAdminOrders(filters: AdminOrderFilters) {
   });
 }
 
+type AdminBoardOrderStatus =
+  | "NEW"
+  | "CONFIRMED"
+  | "PREPARING"
+  | "READY"
+  | "OUT_FOR_DELIVERY"
+  | "COMPLETED";
+
+const ADMIN_BOARD_ORDER_STATUSES: readonly AdminBoardOrderStatus[] = [
+  "NEW",
+  "CONFIRMED",
+  "PREPARING",
+  "READY",
+  "OUT_FOR_DELIVERY",
+  "COMPLETED",
+];
+
+function istDateString(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+  }).format(date);
+}
+
+function boardQueryContainsOrder(
+  queryKey: readonly unknown[],
+  order: AdminOrderSummary,
+  status: OrderStatus,
+): boolean {
+  if (queryKey[2] !== status) return false;
+  const typeFilter = queryKey[3];
+  if (typeFilter && typeFilter !== order.orderType) return false;
+  const dateFilter = queryKey[4];
+  return status !== "COMPLETED" || dateFilter === istDateString(new Date(order.createdAt));
+}
+
+export function useAdminBoardOrders(type?: AdminOrderFilters["type"]) {
+  const [, setMinute] = useState(0);
+  useEffect(() => {
+    const timer = window.setInterval(() => setMinute((minute) => minute + 1), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const today = istDateString(new Date());
+  const results = useQueries({
+    queries: ADMIN_BOARD_ORDER_STATUSES.map((status) => {
+      const completedToday = status === "COMPLETED";
+      const filters: AdminOrderFilters = {
+        status,
+        type,
+        page: 1,
+        pageSize: 100,
+        ...(completedToday ? { dateFrom: today, dateTo: today } : {}),
+      };
+      return {
+        queryKey: ["admin", "boardOrders", status, type ?? null, completedToday ? today : null],
+        queryFn: async () => {
+          const response = await apiFetch<AdminOrderSummary[] | { items: AdminOrderSummary[] }>(
+            `/admin/orders${toSearch(filters)}`,
+          );
+          return Array.isArray(response) ? response : response.items;
+        },
+        refetchInterval: 12_000,
+      };
+    }),
+  });
+
+  return {
+    NEW: results[0],
+    CONFIRMED: results[1],
+    PREPARING: results[2],
+    READY: results[3],
+    OUT_FOR_DELIVERY: results[4],
+    COMPLETED: results[5],
+  };
+}
+
 export function useAdminOrderDetail(id: string | undefined) {
   return useQuery<AdminOrderDetail>({
     queryKey: ["admin", "order", id],
@@ -62,11 +139,11 @@ export function useAdminOrderDetail(id: string | undefined) {
 
 /** Allowed transitions mirror §17 — enforced server-side; client pre-validates for UX. */
 export const ALLOWED_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  NEW: ["CONFIRMED", "CANCELLED"],
-  CONFIRMED: ["PREPARING", "CANCELLED"],
-  PREPARING: ["READY", "CANCELLED"],
-  READY: ["OUT_FOR_DELIVERY", "COMPLETED", "CANCELLED"],
-  OUT_FOR_DELIVERY: ["COMPLETED", "CANCELLED"],
+  NEW: ["CONFIRMED"],
+  CONFIRMED: ["PREPARING"],
+  PREPARING: ["READY"],
+  READY: ["OUT_FOR_DELIVERY", "COMPLETED"],
+  OUT_FOR_DELIVERY: ["COMPLETED"],
   COMPLETED: [],
   CANCELLED: [],
 };
@@ -83,16 +160,21 @@ export function useUpdateOrderStatus(orderId: string) {
     onMutate: async (body) => {
       const ordersQueryKey = ["admin", "orders"] as const;
       const orderQueryKey = ["admin", "order", orderId] as const;
+      const boardOrdersQueryKey = ["admin", "boardOrders"] as const;
 
       await Promise.all([
         qc.cancelQueries({ queryKey: ordersQueryKey }),
         qc.cancelQueries({ queryKey: orderQueryKey }),
+        qc.cancelQueries({ queryKey: boardOrdersQueryKey }),
       ]);
 
       const previousOrder = qc.getQueryData<AdminOrderDetail>(orderQueryKey);
       const previousOrders = qc.getQueriesData<
         AdminOrderSummary[] | { items: AdminOrderSummary[] }
       >({ queryKey: ordersQueryKey });
+      const previousBoardOrders = qc.getQueriesData<AdminOrderSummary[]>({
+        queryKey: boardOrdersQueryKey,
+      });
 
       qc.setQueryData<AdminOrderDetail>(orderQueryKey, (current) =>
         current ? { ...current, status: body.status } : current
@@ -109,7 +191,24 @@ export function useUpdateOrderStatus(orderId: string) {
         }
       );
 
-      return { previousOrder, previousOrders };
+      const boardOrder = previousOrder ?? previousBoardOrders
+        .flatMap(([, data]) => data ?? [])
+        .find((order) => order.id === orderId);
+      if (boardOrder) {
+        const optimisticOrder = { ...boardOrder, status: body.status };
+        previousBoardOrders.forEach(([queryKey]) => {
+          qc.setQueryData<AdminOrderSummary[]>(queryKey, (current) => {
+            const remaining = (current ?? []).filter((order) => order.id !== orderId);
+            return boardQueryContainsOrder(queryKey, optimisticOrder, body.status)
+              ? [...remaining, optimisticOrder]
+              : current
+                ? remaining
+                : undefined;
+          });
+        });
+      }
+
+      return { previousOrder, previousOrders, previousBoardOrders };
     },
     onError: (_err, _body, context) => {
       if (context) {
@@ -131,12 +230,24 @@ export function useUpdateOrderStatus(orderId: string) {
             }
           );
         });
+        context.previousBoardOrders.forEach(([queryKey, data]) => {
+          const previousBoardOrder = data?.find((order) => order.id === orderId);
+          qc.setQueryData<AdminOrderSummary[]>(queryKey, (current) => {
+            const remaining = (current ?? []).filter((order) => order.id !== orderId);
+            return previousBoardOrder
+              ? [...remaining, previousBoardOrder]
+              : current
+                ? remaining
+                : undefined;
+          });
+        });
       }
       push("Failed to update order status. Reverted.", "error");
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: ["admin", "orders"] });
       qc.invalidateQueries({ queryKey: ["admin", "order", orderId] });
+      qc.invalidateQueries({ queryKey: ["admin", "boardOrders"] });
     },
   });
 }

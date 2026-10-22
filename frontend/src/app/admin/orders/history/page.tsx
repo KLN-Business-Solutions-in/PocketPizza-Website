@@ -3,11 +3,10 @@
 import Link from "next/link";
 import React from "react";
 import { useAdminOrderDetail, useAdminOrders } from "@/lib/api/admin";
-import type { AdminOrderDetail, AdminOrderSummary, OrderStatus } from "@shared/contract/contract";
+import type { AdminOrderDetail, AdminOrderSummary } from "@shared/contract/contract";
 import { Card, ErrorState } from "@/components/ui/LayoutPrimitives";
 import { Button } from "@/components/ui/Button";
 
-type HistoryStatus = Extract<OrderStatus, "COMPLETED" | "CANCELLED">;
 const PAGE_SIZE = 100;
 
 function HistoryOrderDetail({ order }: { order: AdminOrderDetail }) {
@@ -27,7 +26,7 @@ function HistoryOrderDetail({ order }: { order: AdminOrderDetail }) {
         </div>
         <p className="mt-2 text-caption text-bodySecondary">
           Placed at {new Date(order.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-          {elapsedMinutes !== null && <span className="ml-2 font-semibold text-emerald-600">· {order.status === "CANCELLED" ? "Cancelled" : "Completed"} in {elapsedMinutes} minutes</span>}
+          {elapsedMinutes !== null && <span className="ml-2 font-semibold text-emerald-600">· Completed in {elapsedMinutes} minutes</span>}
         </p>
       </header>
 
@@ -71,13 +70,12 @@ function HistoryOrderDetail({ order }: { order: AdminOrderDetail }) {
 }
 
 export default function AdminOrderHistoryPage() {
-  const [status, setStatus] = React.useState<HistoryStatus>("COMPLETED");
   const [dateFrom, setDateFrom] = React.useState("");
   const [dateTo, setDateTo] = React.useState("");
   const [page, setPage] = React.useState(1);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const orders = useAdminOrders({
-    status,
+    status: "COMPLETED",
     ...(dateFrom ? { dateFrom } : {}),
     ...(dateTo ? { dateTo } : {}),
     page,
@@ -99,28 +97,14 @@ export default function AdminOrderHistoryPage() {
   return (
     <div className="min-w-0 space-y-5 pb-12 sm:space-y-6">
       <div className="min-w-0">
-        <h1 className="font-heading text-h2 font-bold">{status === "COMPLETED" ? "Completed Records" : "Cancelled Records"}</h1>
+        <h1 className="font-heading text-h2 font-bold">Completed Records</h1>
         <p className="mt-1 text-body text-bodySecondary">
-          Browse completed and cancelled orders.
+          Browse completed orders.
         </p>
       </div>
 
       <Card className="min-w-0 p-4 sm:p-6">
         <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-          <label className="flex flex-col gap-1 text-caption font-semibold text-bodySecondary">
-            Status
-            <select
-              value={status}
-              onChange={(event) => {
-                setStatus(event.target.value as HistoryStatus);
-                setPage(1);
-              }}
-              className="w-full min-w-0 rounded-md border border-border-default bg-white px-3 py-2 text-body text-charcoal"
-            >
-              <option value="COMPLETED">Completed</option>
-              <option value="CANCELLED">Cancelled</option>
-            </select>
-          </label>
           <label className="flex flex-col gap-1 text-caption font-semibold text-bodySecondary">
             From
             <input

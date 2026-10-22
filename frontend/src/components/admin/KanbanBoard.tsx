@@ -3,8 +3,9 @@
 import React from "react";
 import type { OrderStatus, OrderType } from "@shared/contract/contract";
 import { formatINR } from "@/lib/money";
+import { useUpdateOrderStatus } from "@/lib/api/admin";
+import { useToast } from "@/components/ui/ToastProvider";
 import { getOrderTransitions, OrderActionButton } from "@/components/admin/OrderActionButton";
-import { Button } from "@/components/ui/Button";
 
 export type KanbanOrder = {
   id: string;
@@ -28,9 +29,44 @@ interface KanbanBoardProps {
   orders: KanbanOrder[];
   onSelectOrder?: (id: string) => void;
   selectedId?: string | null;
-  onUpdateStatus?: (id: string, status: OrderStatus) => Promise<void> | void;
-  isUpdating?: boolean;
   emptyMessage?: string;
+  isLoading?: boolean;
+}
+
+function CardActionRow({ order }: { order: KanbanOrder }) {
+  const updateStatus = useUpdateOrderStatus(order.id);
+  const toast = useToast();
+  const transitions = getOrderTransitions(order.status, order.orderType);
+
+  if (transitions.length === 0) return null;
+
+  const update = async (status: OrderStatus) => {
+    try {
+      await updateStatus.mutateAsync({ status });
+      const destination = status
+        .split("_")
+        .map((part) => part.charAt(0) + part.slice(1).toLowerCase())
+        .join(" ");
+      toast.push(`${order.orderNumber} moved to ${destination}`, "success");
+    } catch {
+      // useUpdateOrderStatus displays its rollback error toast.
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-2 border-t border-border-default/70 p-3 sm:flex-row sm:flex-wrap">
+      {transitions.map((status) => (
+        <OrderActionButton
+          key={status}
+          status={status}
+          className="min-w-0 flex-1"
+          disabled={updateStatus.isPending}
+          isLoading={updateStatus.isPending}
+          onClick={() => void update(status)}
+        />
+      ))}
+    </div>
+  );
 }
 
 function formatTimeAgo(isoString: string): string {
@@ -50,30 +86,15 @@ export function KanbanBoard({
   orders,
   onSelectOrder,
   selectedId,
-  onUpdateStatus,
-  isUpdating,
   emptyMessage = "No orders",
+  isLoading = false,
 }: KanbanBoardProps) {
-  const [updatingId, setUpdatingId] = React.useState<string | null>(null);
-
-  const handleTransition = async (orderId: string, nextStatus: OrderStatus, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!onUpdateStatus) return;
-    setUpdatingId(orderId);
-    try {
-      await onUpdateStatus(orderId, nextStatus);
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
   const sorted = [...orders].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 
   const renderOrderRow = (order: KanbanOrder) => {
     const isSelected = selectedId === order.id;
-    const transitions = getOrderTransitions(order.status, order.orderType);
     const itemCount = order.items
       ? order.items.reduce((sum, item) => sum + (item.quantity || 1), 0)
       : 1;
@@ -90,7 +111,11 @@ export function KanbanBoard({
     };
 
     return (
-      <div key={order.id} className="min-w-0">
+      <div key={order.id} className={`min-w-0 overflow-hidden rounded-xl border bg-white transition-all ${
+        isSelected
+          ? "border-2 border-brand-red bg-blushTint/30 shadow-md ring-2 ring-brand-red/10"
+          : "border-border-default hover:border-brand-red/40 hover:shadow-sm"
+      }`}>
         <div
           role="button"
           tabIndex={0}
@@ -100,11 +125,7 @@ export function KanbanBoard({
             e.preventDefault();
             onSelectOrder?.(order.id);
           }}
-          className={`group relative flex flex-col min-w-0 gap-2 rounded-xl border bg-white p-3.5 transition-all cursor-pointer ${
-            isSelected
-              ? "border-2 border-brand-red bg-blushTint/30 shadow-md ring-2 ring-brand-red/10"
-              : "border-border-default hover:border-brand-red/40 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red"
-          }`}
+          className="group relative flex min-w-0 cursor-pointer flex-col gap-2 p-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-red"
         >
           {/* Header row: Order ID, status, and Price */}
           <div className="flex items-center justify-between gap-2">
@@ -163,13 +184,24 @@ export function KanbanBoard({
             </span>
           </div>
         </div>
+        <CardActionRow order={order} />
       </div>
     );
   };
 
   return (
     <div className="min-w-0">
-      {orders.length === 0 ? (
+      {isLoading ? (
+        <div className="space-y-2" aria-label="Loading orders" aria-busy="true">
+          {[0, 1, 2].map((row) => (
+            <div key={row} className="animate-pulse rounded-xl border border-border-default bg-white p-4">
+              <div className="h-4 w-2/5 rounded bg-neutralTint" />
+              <div className="mt-3 h-3 w-3/4 rounded bg-neutralTint" />
+              <div className="mt-3 h-3 w-1/2 rounded bg-neutralTint" />
+            </div>
+          ))}
+        </div>
+      ) : orders.length === 0 ? (
         <div className="flex min-h-36 items-center justify-center rounded-xl border border-dashed border-border-default bg-white px-5 text-center text-body text-bodySecondary">
           {emptyMessage}
         </div>

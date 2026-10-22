@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCurrentOrders, type CurrentOrder } from "@/lib/api/orders";
 import { ApiError } from "@/lib/api/client";
 import { useCartHydrated, useCartStore } from "@/lib/cart/store";
-import { formatOrderTimestamp, orderTypeLabel, statusLabel } from "@/lib/order/status";
+import { excludeCancelledOrders, formatOrderTimestamp, orderTypeLabel, statusLabel } from "@/lib/order/status";
 import { ErrorState, Skeleton } from "@/components/ui/LayoutPrimitives";
 
 const CURRENT_STATUSES = new Set<CurrentOrder["status"]>([
@@ -14,7 +14,7 @@ const CURRENT_STATUSES = new Set<CurrentOrder["status"]>([
   "READY",
   "OUT_FOR_DELIVERY",
 ]);
-const PAST_STATUSES = new Set<CurrentOrder["status"]>(["COMPLETED", "CANCELLED"]);
+const PAST_STATUSES = new Set<CurrentOrder["status"]>(["COMPLETED"]);
 
 function statusClasses(status: CurrentOrder["status"]): string {
   if (status === "COMPLETED") return "bg-status-successBg text-emerald-700";
@@ -122,7 +122,7 @@ export function CurrentOrdersSection() {
       />
     );
   } else {
-    const orders = ordersQuery.data ?? [];
+    const orders = excludeCancelledOrders(ordersQuery.data ?? []);
     const currentOrders = orders.filter((order) => CURRENT_STATUSES.has(order.status));
     const pastOrders = orders.filter((order) => PAST_STATUSES.has(order.status));
     content = orders.length === 0 ? (

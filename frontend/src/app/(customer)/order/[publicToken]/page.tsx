@@ -44,7 +44,7 @@ export default function OrderPage() {
 
   // Order in view → prefills the floating WhatsApp action with the order
   // number (issue #42). Cleanup restores the generic text on navigation.
-  const orderNumber = order.data?.orderNumber ?? null;
+  const orderNumber = order.data?.status === "CANCELLED" ? null : order.data?.orderNumber ?? null;
   React.useEffect(() => {
     if (!orderNumber) return;
     setWhatsAppPrefill(`Hi! I have a question about order ${orderNumber}.`);
@@ -84,7 +84,20 @@ export default function OrderPage() {
   const o = order.data;
   if (!o) return null;
 
-  const cancelled = o.status === "CANCELLED";
+  if (o.status === "CANCELLED") {
+    return (
+      <div className="pb-12">
+        <Card>
+          <h1 className="font-heading text-h2 font-bold text-charcoal">{o.orderNumber}</h1>
+          <p className="mt-3 text-body text-bodySecondary">This order is no longer active.</p>
+          <Link href="/cart" className="mt-4 inline-block text-body font-semibold text-brand-red underline">
+            Back to your orders
+          </Link>
+        </Card>
+      </div>
+    );
+  }
+
   const isDelivery = o.orderType === "DELIVERY";
   const live = !isTerminalStatus(o.status);
 
@@ -92,7 +105,7 @@ export default function OrderPage() {
     <div className="space-y-6 pb-12">
       <div>
         <p className="text-caption uppercase tracking-wide text-mutedGray">
-          {cancelled ? "Order cancelled" : "Order placed"}
+          Order placed
         </p>
         {/* The order number is the heading: it is the one fact a customer reads
             aloud over the phone, and it is what a shared link must show. */}
@@ -103,7 +116,7 @@ export default function OrderPage() {
         </p>
       </div>
 
-      <Card className={cancelled ? "border-brand-red" : undefined}>
+      <Card>
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-heading font-bold text-charcoal">{statusLabel(o.status)}</h2>
           {live && (
@@ -117,22 +130,19 @@ export default function OrderPage() {
           )}
         </div>
         <p className="mt-1 text-body text-bodySecondary">{statusHint(o.status, o.orderType)}</p>
-        {!cancelled && (
-          <p className="mt-3 rounded-md bg-neutralTint px-4 py-3 text-body">
-            <span className="font-semibold">{paymentNote(o.orderType)}</span>{" "}
-            {isDelivery
-              ? "Please keep the exact amount if you can — it helps the rider."
-              : "We will have your order ready."}
-          </p>
-        )}
+        <p className="mt-3 rounded-md bg-neutralTint px-4 py-3 text-body">
+          <span className="font-semibold">{paymentNote(o.orderType)}</span>{" "}
+          {isDelivery
+            ? "Please keep the exact amount if you can — it helps the rider."
+            : "We will have your order ready."}
+        </p>
       </Card>
 
       {/* Honest WhatsApp state (Day 9): never claim a message was sent when
           the provider failed, and never let a failed send imply the order is
           anything but confirmed. `whatsapp` is null only while dispatch is
           still in flight (or for pre-Day-9 orders). */}
-      {!cancelled && (
-        <p
+      <p
           className={`flex items-start gap-2 text-body ${
             o.whatsapp?.status === "failed" ? "text-brand-red" : "text-bodySecondary"
           }`}
@@ -161,8 +171,7 @@ export default function OrderPage() {
                       .
                     </>}
           </span>
-        </p>
-      )}
+      </p>
 
       <Card>
         <h2 className="font-heading font-bold">Items</h2>

@@ -165,7 +165,7 @@ function AddressForm({
           Save address
         </Button>
         <Button type="button" size="sm" variant="ghost" disabled={saving} onClick={onCancel}>
-          Cancel
+          Discard
         </Button>
       </div>
     </form>
@@ -477,7 +477,7 @@ export function SettingsContent() {
                             disabled={deleteAddress.isPending}
                             onClick={() => setConfirmDeleteId(null)}
                           >
-                            Cancel
+                            Keep editing
                           </Button>
                         </>
                       ) : (
@@ -585,16 +585,16 @@ export function SettingsContent() {
               isLoading={cancelDeletion.isPending}
               onClick={() =>
                 cancelDeletion.mutate(undefined, {
-                  onSuccess: () => toast.push("Deletion request cancelled.", "success"),
+                  onSuccess: () => toast.push("Deletion request withdrawn.", "success"),
                   onError: (error) =>
                     toast.push(
-                      apiErrorMessage(error, "Couldn't cancel the request."),
+                      apiErrorMessage(error, "Couldn't withdraw the request."),
                       "error"
                     ),
                 })
               }
             >
-              Cancel deletion request
+              Withdraw deletion request
             </Button>
           </div>
         ) : confirmDeletion ? (
@@ -616,7 +616,7 @@ export function SettingsContent() {
                     onSuccess: () => {
                       setConfirmDeletion(false);
                       toast.push(
-                        "Account deletion requested. You can cancel it from this page.",
+                        "Account deletion requested. You can withdraw it from this page.",
                         "info"
                       );
                     },
