@@ -1,6 +1,15 @@
 generator client {
   provider = "prisma-client"
   output   = "../backend/src/generated/prisma"
+  runtime  = "workerd"
+}
+
+// Node entrypoint (server.ts / tsx): the workerd client imports its query
+// compiler with the `?module` suffix, which only Wrangler understands.
+generator clientNode {
+  provider = "prisma-client"
+  output   = "../backend/src/generated/prisma-node"
+  runtime  = "nodejs"
 }
 
 datasource db {
@@ -197,6 +206,10 @@ model Order {
 
   subtotal    Decimal @db.Decimal(10, 2)
   deliveryFee Decimal @default(0) @db.Decimal(10, 2)
+  // Straight-line km (Haversine, 2dp) that produced deliveryFee. Null for
+  // orders priced before this feature, non-delivery orders, and DELIVERY
+  // orders placed without customer coordinates (flat-fee fallback).
+  deliveryDistanceKm Float?
   tax         Decimal @default(0) @db.Decimal(10, 2)
   total       Decimal @db.Decimal(10, 2)
 

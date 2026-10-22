@@ -84,8 +84,6 @@ export default function Navbar() {
     };
   }, [menuOpen]);
 
-  useEffect(() => setMenuOpen(false), [pathname]);
-
   const handleLogout = async () => {
     setMenuOpen(false);
     try {

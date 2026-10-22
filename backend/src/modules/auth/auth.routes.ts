@@ -1,5 +1,5 @@
-import { Router } from 'express';
-import { ah } from '../../utils/async-handler';
+import { Hono } from 'hono';
+import { wrap } from '../../http/express-adapter';
 import {
   loginRateLimit,
   refreshRateLimit,
@@ -11,9 +11,9 @@ import {
 } from './auth.controller';
 import { customerAuthRouter } from './auth.customer.routes';
 
-export const authRouter = Router();
+export const authRouter = new Hono();
 
-authRouter.post('/login', loginRateLimit, ah(loginController));
-authRouter.post('/refresh', refreshRateLimit, ah(refreshController));
-authRouter.post('/logout', ah(logoutController));
-authRouter.use('/customer', customerAuthRouter);
+authRouter.post('/login', loginRateLimit, wrap(loginController));
+authRouter.post('/refresh', refreshRateLimit, wrap(refreshController));
+authRouter.post('/logout', wrap(logoutController));
+authRouter.route('/customer', customerAuthRouter);

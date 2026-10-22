@@ -70,8 +70,8 @@ const galleryImages = [
 export default function AboutPage() {
   return (
     <div className="-mx-5 -mt-6 md:-mx-10">
-      {/* Page hero */}
-      <section className="relative h-[320px] overflow-hidden md:h-[400px]">
+      {/* Page hero — full-bleed; content spans the banner width */}
+      <section className="relative left-1/2 h-[320px] w-screen -translate-x-1/2 overflow-hidden md:h-[400px]">
         <Image
           src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1600&q=80"
           alt="Pokket Pizza kitchen team at work"
@@ -81,7 +81,7 @@ export default function AboutPage() {
           className="object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/50 to-black/10" />
-        <div className="relative mx-auto flex h-full max-w-6xl flex-col justify-center px-5 text-white md:px-10">
+        <div className="relative flex h-full flex-col justify-center px-5 text-white md:px-10">
           <h1 className="font-heading text-h1-alt font-extrabold leading-[1.05] text-white md:text-display-l">
             Our Story & Passion
           </h1>

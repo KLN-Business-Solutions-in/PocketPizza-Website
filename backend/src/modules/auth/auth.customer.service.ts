@@ -1,9 +1,5 @@
-import argon2 from 'argon2';
 import { SignJWT, jwtVerify } from 'jose';
 import { randomUUID } from 'crypto';
-import { ZxcvbnFactory } from '@zxcvbn-ts/core';
-import { adjacencyGraphs, dictionary as commonDictionary } from '@zxcvbn-ts/language-common';
-import { dictionary as enDictionary, translations } from '@zxcvbn-ts/language-en';
 import { env } from '../../config/env';
 import {
   AppError,
@@ -12,6 +8,8 @@ import {
   ValidationError,
 } from '../../utils/errors';
 import { createChildLogger } from '../../utils/logger';
+import { getDummyPasswordHash, hashPassword, verifyPassword } from '../../utils/password';
+import { assertStrongPassword } from '../../utils/passwordPolicy';
 import { normalizeIndianPhone } from '../../utils/phone';
 import {
   findCustomerById,
@@ -91,39 +89,11 @@ function recordFailure(ip: string, phone: string): void {
   }
 }
 
-let dummyHashPromise: Promise<string> | undefined;
-
-function getDummyHash(): Promise<string> {
-  if (!dummyHashPromise) {
-    dummyHashPromise = argon2.hash('timing-equalizer-not-a-real-password');
-  }
-  return dummyHashPromise;
-}
-
-const zxcvbn = new ZxcvbnFactory({
-  dictionary: { ...commonDictionary, ...enDictionary },
-  graphs: adjacencyGraphs,
-  translations,
-});
-
 function normalizePhone(raw: string): string {
   try {
     return normalizeIndianPhone(raw);
   } catch {
     throw new ValidationError('Invalid phone number');
-  }
-}
-
-export function assertStrongPassword(password: string, userInputs: string[]): void {
-  const { score, feedback } = zxcvbn.check(
-    password,
-    userInputs.filter((w) => w.length > 0),
-  );
-  if (score < 1) {
-    throw new ValidationError(
-      'Password is too guessable, choose a stronger one',
-      feedback.suggestions.slice(0, 3),
-    );
   }
 }
 
@@ -234,7 +204,7 @@ export async function customerSignup(
     if (!restaurantId) {
       throw new AppError('RESTAURANT_NOT_CONFIGURED', 'No restaurant is configured', 500);
     }
-    const passwordHash = await argon2.hash(input.password);
+    const passwordHash = await hashPassword(input.password);
     try {
       const created = await createCustomerWithCredential({
         restaurantId,
@@ -275,7 +245,7 @@ export async function customerSignup(
   try {
     claimed = await setCustomerCredential({
       id: account.id,
-      passwordHash: await argon2.hash(input.password),
+      passwordHash: await hashPassword(input.password),
       email,
     });
   } catch (err) {
@@ -302,9 +272,9 @@ export async function customerLogin(
 
   let passwordOk = false;
   if (account?.passwordHash) {
-    passwordOk = await argon2.verify(account.passwordHash, input.password);
+    passwordOk = await verifyPassword(account.passwordHash, input.password);
   } else {
-    await argon2.verify(await getDummyHash(), input.password);
+    await verifyPassword(await getDummyPasswordHash(), input.password);
   }
 
   if (!account || !account.passwordHash || !passwordOk) {

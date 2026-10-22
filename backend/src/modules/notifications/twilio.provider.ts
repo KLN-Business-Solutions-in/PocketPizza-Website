@@ -1,4 +1,3 @@
-import twilio from 'twilio';
 import { env } from '../../config/env';
 import type { WhatsAppSendResult } from './notification.types';
 
@@ -29,16 +28,6 @@ function whatsappAddress(raw: string): string {
   return `whatsapp:${formatE164(trimmed)}`;
 }
 
-let client: twilio.Twilio | undefined;
-
-function getTwilioClient(): twilio.Twilio | undefined {
-  if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN) return undefined;
-  if (!client) {
-    client = twilio(env.TWILIO_ACCOUNT_SID, env.TWILIO_AUTH_TOKEN);
-  }
-  return client;
-}
-
 /** true when every credential the Content API needs is present. */
 export function isTwilioConfigured(): boolean {
   return Boolean(
@@ -46,11 +35,10 @@ export function isTwilioConfigured(): boolean {
   );
 }
 
-type TwilioLikeError = { status?: number; code?: number; message?: string };
+type TwilioLikeError = { code?: number; message?: string };
 
-function classifyError(err: unknown, label: string): WhatsAppSendResult {
+function classifyError(status: number | undefined, err: unknown, label: string): WhatsAppSendResult {
   const e = (typeof err === 'object' && err !== null ? err : {}) as TwilioLikeError;
-  const status = typeof e.status === 'number' ? e.status : undefined;
   // No HTTP status → transport-level failure (DNS/timeout/refused): transient.
   const retryable = status === undefined || status === 429 || status >= 500;
   const detail = [
@@ -77,40 +65,61 @@ type TemplateSendInput = {
 };
 
 async function sendTemplateMessage(input: TemplateSendInput): Promise<WhatsAppSendResult> {
+  if (!input.contentSid) {
+    return {
+      success: false,
+      error: `${input.label}: template SID not configured`,
+      retryable: false,
+    };
+  }
+  if (!isTwilioConfigured()) {
+    return {
+      success: false,
+      error: `${input.label}: Twilio credentials not configured`,
+      retryable: false,
+    };
+  }
+
+  const accountSid = env.TWILIO_ACCOUNT_SID;
+  const body = new URLSearchParams({
+    To: whatsappAddress(input.to),
+    From: whatsappAddress(env.TWILIO_WHATSAPP_NUMBER),
+    ContentSid: input.contentSid,
+    ContentVariables: JSON.stringify(input.contentVariables),
+  });
+
+  let status: number | undefined;
   try {
-    if (!input.contentSid) {
-      return {
-        success: false,
-        error: `${input.label}: template SID not configured`,
-        retryable: false,
-      };
-    }
-    const twilioClient = getTwilioClient();
-    if (!twilioClient) {
-      return {
-        success: false,
-        error: `${input.label}: Twilio credentials not configured`,
-        retryable: false,
-      };
-    }
-
-    const create = twilioClient.messages.create({
-      to: whatsappAddress(input.to),
-      from: whatsappAddress(env.TWILIO_WHATSAPP_NUMBER),
-      contentSid: input.contentSid,
-      contentVariables: JSON.stringify(input.contentVariables),
-    });
-    // If the timeout wins the race below, the real request still settles later;
-    // attach a no-op catch so that late rejection is never "unhandled".
-    create.catch(() => undefined);
-    const timeout = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error(`send timed out after ${SEND_TIMEOUT_MS}ms`)), SEND_TIMEOUT_MS).unref(),
+    const response = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(accountSid)}/Messages.json`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${btoa(`${accountSid}:${env.TWILIO_AUTH_TOKEN}`)}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body,
+        signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
+      },
     );
-    const message = (await Promise.race([create, timeout])) as { sid: string };
+    status = response.status;
 
-    return { success: true, messageId: message.sid, retryable: false };
+    const payload = (await response.json().catch(() => ({}))) as {
+      sid?: string;
+      code?: number;
+      message?: string;
+    };
+
+    if (!response.ok) {
+      return classifyError(status, payload, input.label);
+    }
+    if (!payload.sid) {
+      return classifyError(undefined, { message: 'empty response from Twilio' }, input.label);
+    }
+
+    return { success: true, messageId: payload.sid, retryable: false };
   } catch (err) {
-    return classifyError(err, input.label);
+    return classifyError(status, err, input.label);
   }
 }
 

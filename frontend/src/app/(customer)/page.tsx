@@ -37,8 +37,8 @@ const testimonials = [
 export default function HomePage() {
   return (
     <div className="-mx-5 -mt-6 md:-mx-10">
-      {/* Hero */}
-      <section className="relative h-[420px] overflow-hidden md:h-[540px]">
+      {/* Hero — full-bleed to the viewport; content spans the banner width */}
+      <section className="relative left-1/2 h-[420px] w-screen -translate-x-1/2 overflow-hidden md:h-[540px]">
         <Image
           src="https://images.unsplash.com/photo-1513104890138-7c749659a591?w=1600&q=80"
           alt="Wood-fired artisan pizza"
@@ -48,7 +48,7 @@ export default function HomePage() {
           className="object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/50 to-black/10" />
-        <div className="relative mx-auto flex h-full max-w-6xl flex-col justify-center px-5 text-white md:px-10">
+        <div className="relative flex h-full flex-col justify-center px-5 text-white md:px-10">
           <span className="w-fit rounded-md bg-brand-red px-3 py-1 font-heading text-tag font-semibold uppercase tracking-wide">
             London&apos;s Finest Artisan Pizza
           </span>

@@ -383,6 +383,7 @@ export default function MenuManagerPage() {
                 onChange={(event) => { selectImageFile(event.target.files?.[0]); event.currentTarget.value = ""; }}
               />
               {localPreviewUrl || imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
                 <img src={localPreviewUrl ?? imageUrl} alt="Product preview" className="mx-auto h-[88px] w-[88px] rounded-lg border border-border-default bg-white object-cover sm:mx-0" />
               ) : (
                 <div className="mx-auto grid h-[88px] w-[88px] place-items-center rounded-lg border border-border-default bg-white text-caption text-bodySecondary sm:mx-0">Upload</div>
@@ -548,6 +549,7 @@ function ProductRow({
   return (
     <li className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_40px] items-center gap-x-3 gap-y-2 rounded-xl border border-border-default bg-white p-2 text-body md:my-2 md:grid-cols-[minmax(0,1fr)_100px_100px_100px] md:rounded-none md:border-x-0 md:border-b-0 md:px-2 md:py-3">
       <div className="col-span-3 flex min-w-0 items-center gap-3 md:col-span-1">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         {imageUrl ? <img src={imageUrl} alt="" className="h-12 w-12 shrink-0 rounded-lg border border-border-default object-cover" /> : <div aria-hidden="true" className="h-12 w-12 shrink-0 rounded-lg border border-border-default bg-cream-bg" />}
         <span className="min-w-0 break-words">
           <span className={`block font-semibold ${isActive ? "" : "line-through text-mutedGray"}`}>{name}</span>

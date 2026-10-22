@@ -1,9 +1,9 @@
-import argon2 from 'argon2';
 import { SignJWT, jwtVerify } from 'jose';
 import { randomUUID } from 'crypto';
 import { env } from '../../config/env';
 import { AuthError, AuthInvalidError, RateLimitError } from '../../utils/errors';
 import { createChildLogger } from '../../utils/logger';
+import { getDummyPasswordHash, verifyPassword } from '../../utils/password';
 import {
   findAdminByEmail,
   findAdminById,
@@ -72,15 +72,6 @@ function recordFailure(ip: string, email: string): void {
     entry.lockedUntil = now + LOCKOUT_DURATION_MS;
     logger.warn({ email, ip, fails: entry.fails }, 'Login locked after repeated failures');
   }
-}
-
-let dummyHashPromise: Promise<string> | undefined;
-
-function getDummyHash(): Promise<string> {
-  if (!dummyHashPromise) {
-    dummyHashPromise = argon2.hash('timing-equalizer-not-a-real-password');
-  }
-  return dummyHashPromise;
 }
 
 async function signAccessToken(admin: AdminRow): Promise<string> {
@@ -230,9 +221,9 @@ export async function login(
 
   let passwordOk = false;
   if (admin) {
-    passwordOk = await argon2.verify(admin.passwordHash, input.password);
+    passwordOk = await verifyPassword(admin.passwordHash, input.password);
   } else {
-    await argon2.verify(await getDummyHash(), input.password);
+    await verifyPassword(await getDummyPasswordHash(), input.password);
   }
 
   if (!admin || !passwordOk) {

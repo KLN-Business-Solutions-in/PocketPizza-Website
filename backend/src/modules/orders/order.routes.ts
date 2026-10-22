@@ -1,6 +1,5 @@
-import { Router } from 'express';
-import type { Request, Response, NextFunction } from 'express';
-import { ah } from '../../utils/async-handler';
+import { Hono, type MiddlewareHandler } from 'hono';
+import { wrap } from '../../http/express-adapter';
 import {
   orderCreateRateLimit,
   phoneOrdersIpRateLimit,
@@ -18,34 +17,34 @@ import {
   updateAdminOrderStatusController,
 } from './order.controller';
 
-export const orderRouter = Router();
-
 // PII-bearing order responses must never be cached
-orderRouter.use((_req: Request, res: Response, next: NextFunction) => {
-  res.setHeader('Cache-Control', 'no-store');
-  next();
-});
+const noStore: MiddlewareHandler = async (c, next) => {
+  await next();
+  c.header('Cache-Control', 'no-store');
+};
 
-orderRouter.post('/orders/quote', ah(quoteController));
-orderRouter.post('/orders', orderCreateRateLimit, ah(createOrderController));
+export const orderRouter = new Hono();
+
+orderRouter.use('*', noStore);
+orderRouter.post('/orders/quote', wrap(quoteController));
+orderRouter.post('/orders', orderCreateRateLimit, wrap(createOrderController));
 // Registered before /orders/:publicToken so "phone" is never parsed as a token.
 orderRouter.get(
   '/orders/phone/:phone',
   phoneOrdersIpRateLimit,
   phoneOrdersPhoneRateLimit,
-  ah(getOrdersByPhoneController),
+  wrap(getOrdersByPhoneController),
 );
-orderRouter.get('/orders/:publicToken', tokenLookupRateLimit, ah(getOrderController));
-orderRouter.get('/orders/:publicToken/invoice', tokenLookupRateLimit, ah(getInvoiceController));
+orderRouter.get('/orders/:publicToken', tokenLookupRateLimit, wrap(getOrderController));
+orderRouter.get(
+  '/orders/:publicToken/invoice',
+  tokenLookupRateLimit,
+  wrap(getInvoiceController),
+);
 
-export const orderAdminRouter = Router();
+export const orderAdminRouter = new Hono();
 
-// PII-bearing admin order responses must never be cached (mirrors public router above)
-orderAdminRouter.use((_req: Request, res: Response, next: NextFunction) => {
-  res.setHeader('Cache-Control', 'no-store');
-  next();
-});
-
-orderAdminRouter.get('/orders', ah(listAdminOrdersController));
-orderAdminRouter.get('/orders/:id', ah(getAdminOrderController));
-orderAdminRouter.patch('/orders/:id/status', ah(updateAdminOrderStatusController));
+orderAdminRouter.use('*', noStore);
+orderAdminRouter.get('/orders', wrap(listAdminOrdersController));
+orderAdminRouter.get('/orders/:id', wrap(getAdminOrderController));
+orderAdminRouter.patch('/orders/:id/status', wrap(updateAdminOrderStatusController));
