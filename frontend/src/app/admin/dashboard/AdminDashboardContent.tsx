@@ -236,7 +236,6 @@ export function AdminDashboardContent() {
             </select>
           </div>
           <div className="min-w-0 h-[56vh] sm:h-[70vh] overflow-y-auto pr-1 rounded-lg border-t border-border-default">
-<<<<<<< HEAD
             {statusFilter === "ALL" && failedListQueries.length > 0 && (
               <p role="status" className="px-2 py-2 text-caption text-brand-red">
                 Some order statuses could not be loaded.
@@ -256,14 +255,6 @@ export function AdminDashboardContent() {
                 emptyMessage={EMPTY_MESSAGES[statusFilter]}
               />
             )}
-=======
-            <KanbanBoard
-              orders={boardOrders}
-              selectedId={selectedId}
-              onSelectOrder={setSelectedId}
-              emptyMessage={EMPTY_MESSAGES[statusFilter]}
-            />
->>>>>>> upstream/develop
           </div>
         </section>
 

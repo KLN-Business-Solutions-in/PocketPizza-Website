@@ -2,12 +2,9 @@
 
 import type { OrderStatus, OrderType } from "@shared/contract/contract";
 import { formatINR } from "@/lib/money";
-<<<<<<< HEAD
 import { useUpdateOrderStatus } from "@/lib/api/admin";
 import { useToast } from "@/components/ui/ToastProvider";
 import { getOrderTransitions, OrderActionButton } from "@/components/admin/OrderActionButton";
-=======
->>>>>>> upstream/develop
 
 export type KanbanOrder = {
   id: string;
