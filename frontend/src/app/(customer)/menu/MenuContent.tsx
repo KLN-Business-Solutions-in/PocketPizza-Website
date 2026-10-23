@@ -72,7 +72,7 @@ export function MenuContent() {
             Everything we bake, in one place.
           </h1>
           <p className="mt-2 text-sm md:text-base text-gray-300">
-            Handcrafted artisanal sourdough crusts, slow-simmered sauces, and fresh gourmet toppings.
+            Hand-stretched pizza bases, slow-simmered sauces, and fresh gourmet toppings.
           </p>
         </div>
         {/* Subtle decorative pizza background accent */}

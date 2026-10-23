@@ -62,9 +62,9 @@ export default function WhatsAppFab() {
           fill="currentColor"
           d="M12 3C6.5 3 2 6.86 2 11.6c0 2.68 1.4 5.06 3.6 6.66l-.86 3.2c-.13.48.35.9.81.69l3.66-1.62c.9.24 1.87.37 2.79.37 5.5 0 10-3.86 10-8.7S17.5 3 12 3z"
         />
-        <circle cx="8.4" cy="11.6" r="1.15" fill="#25D366" />
-        <circle cx="12" cy="11.6" r="1.15" fill="#25D366" />
-        <circle cx="15.6" cy="11.6" r="1.15" fill="#25D366" />
+        <circle cx="8.4" cy="11.6" r="1.15" className="fill-status-whatsapp" />
+        <circle cx="12" cy="11.6" r="1.15" className="fill-status-whatsapp" />
+        <circle cx="15.6" cy="11.6" r="1.15" className="fill-status-whatsapp" />
       </svg>
     </a>
   );

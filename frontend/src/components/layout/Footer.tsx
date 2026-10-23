@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "@/components/ui/Logo";
 import {
   mailtoHref,
   siteContact,
@@ -28,21 +29,15 @@ export default function Footer() {
           <div>
             <Link
               href="/"
-              className="flex items-center gap-2 font-heading text-lg font-extrabold tracking-tight"
+              className="flex items-center gap-1.5 whitespace-nowrap font-heading text-lg font-extrabold tracking-tight sm:gap-2"
             >
-              <span
-                className="grid h-7 w-7 place-items-center rounded-md bg-brand-red text-sm text-white"
-                aria-hidden="true"
-              >
-                🍕
-              </span>
+              <Logo className="h-8 w-auto sm:h-9" />
               <span className="text-white">
                 POKKET <span className="text-brand-red">PIZZA</span>
               </span>
             </Link>
             <p className="mt-4 text-body leading-relaxed text-white/85">
-              Handmade pizzas, delivered fast — baked fresh in our wood-fired deck
-              oven.
+              Handmade pizzas, delivered fast — baked fresh in our oven.
             </p>
           </div>
 

@@ -26,9 +26,9 @@ export default function CartPage() {
   // active-item reconciliation is deciding whether your cart is still valid.
   const { isLoading } = useMenuFlat();
 
-  // Day 4 indicative subtotal. Display-only — the server re-prices on Day 6.
+  // Cart subtotal. Display-only — the server re-prices at checkout.
   // Accumulated in integer paise; never float, never string concatenation.
-  const indicativeSubtotal = fromPaise(
+  const subtotal = fromPaise(
     lines.reduce((total, l) => total + toPaise(l.displayPrice) * l.quantity, 0)
   );
 
@@ -84,20 +84,16 @@ export default function CartPage() {
       <Card>
         <div className="flex items-baseline justify-between">
           <div>
-            <p className="font-heading font-bold">Indicative subtotal</p>
+            <p className="font-heading font-bold">Subtotal</p>
             <p className="text-caption text-mutedGray">
               {lines.length} {lines.length === 1 ? "line" : "lines"} ·{" "}
               {lines.reduce((n, l) => n + l.quantity, 0)} items
             </p>
           </div>
           <p className="font-heading font-extrabold text-h4 text-charcoal">
-            {formatINR(indicativeSubtotal)}
+            {formatINR(subtotal)}
           </p>
         </div>
-        <p className="mt-3 text-caption text-mutedGray">
-          Indicative only. Delivery fee and tax are added by the server at checkout, which is the
-          price you actually pay.
-        </p>
         {lines.length >= MAX_CART_LINES && (
           <p role="status" className="mt-2 text-caption font-medium text-brand-red">
             This is the maximum number of separate items we can order in one order. Remove a line to
