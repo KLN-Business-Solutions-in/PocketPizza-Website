@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { indianPhoneSchema } from "@shared/contract/contract";
 import { ApiError } from "@/lib/api/client";
 import {
@@ -17,23 +17,14 @@ import { Logo } from "@/components/ui/Logo";
 type AuthMode = "login" | "signup";
 type FieldErrors = Partial<Record<"name" | "phone" | "email" | "password", string>>;
 
-function isSafeDestination(value: string | null): value is string {
-  return Boolean(
+function getDestination(value: string | null): string {
+  if (
     value &&
     value.startsWith("/") &&
     !value.startsWith("//") &&
     !value.includes("\\") &&
     !value.startsWith("/admin")
-  );
-}
-
-function getSafeDestination(searchParams: { get: (name: string) => string | null }): string {
-  const next = searchParams.get("next");
-  if (isSafeDestination(next)) return next;
-
-  const redirectTo = searchParams.get("redirectTo");
-  if (isSafeDestination(redirectTo)) return redirectTo;
-
+  ) return value;
   return "/";
 }
 
@@ -79,10 +70,16 @@ function Field({
   );
 }
 
-export default function CustomerAuthForm({ mode }: { mode: AuthMode }) {
+export default function CustomerAuthForm({
+  mode,
+  redirectTo = null,
+}: {
+  mode: AuthMode;
+  redirectTo?: string | null;
+}) {
   const isSignup = mode === "signup";
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const destination = getDestination(redirectTo);
   const session = useCustomerSession();
   const login = useCustomerLogin();
   const signup = useCustomerSignup();
@@ -96,11 +93,17 @@ export default function CustomerAuthForm({ mode }: { mode: AuthMode }) {
   const submitNavigationRef = React.useRef(false);
   const isPending = login.isPending || signup.isPending;
 
+  // The server and the first client render must agree on the loading shell,
+  // even when React Query already has a session snapshot in its client cache.
+  const hasMounted = React.useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+
   React.useEffect(() => {
-    if (session.data?.loggedIn && !submitNavigationRef.current) {
-      router.replace(getSafeDestination(searchParams));
-    }
-  }, [router, searchParams, session.data]);
+    if (session.data?.loggedIn && !submitNavigationRef.current) router.replace(destination);
+  }, [destination, router, session.data]);
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -149,7 +152,7 @@ export default function CustomerAuthForm({ mode }: { mode: AuthMode }) {
       } else {
         await login.mutateAsync({ phone: normalizedPhone, password });
       }
-      router.replace(getSafeDestination(searchParams));
+      router.replace(destination);
     } catch (error) {
       submitNavigationRef.current = false;
       const apiError = error as ApiError;
@@ -171,7 +174,7 @@ export default function CustomerAuthForm({ mode }: { mode: AuthMode }) {
     }
   };
 
-  if (session.isLoading || session.data?.loggedIn) {
+  if (!hasMounted || session.isLoading || session.data?.loggedIn) {
     return (
       <main className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-cream-bg px-4 pt-10 pb-28 md:py-10">
         <p className="text-body text-bodySecondary">Checking your account…</p>

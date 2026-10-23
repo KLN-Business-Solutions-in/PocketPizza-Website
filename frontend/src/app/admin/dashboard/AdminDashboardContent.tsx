@@ -264,8 +264,8 @@ export function AdminDashboardContent() {
 
         <aside className={`${selectedId ? "fixed inset-0 z-[100] flex min-h-0 flex-col bg-cream-bg p-0 pt-[env(safe-area-inset-top)] lg:static lg:z-auto lg:col-span-2 lg:block lg:rounded-xl lg:border lg:border-border-default lg:bg-white lg:p-6 lg:shadow-card xl:sticky xl:top-24 xl:col-span-1 xl:p-6" : "hidden rounded-xl border border-border-default bg-white p-4 shadow-card lg:col-span-2 lg:block xl:sticky xl:top-24 xl:col-span-1 sm:p-6"}`}>
           {selectedId ? (
-          <div className="m-3 flex min-h-0 flex-1 flex-col space-y-0 overflow-hidden rounded-3xl border border-[#eadccc] bg-white shadow-card lg:m-0 lg:overflow-visible lg:rounded-xl lg:border-0 lg:bg-transparent lg:shadow-none lg:block lg:flex-none lg:space-y-4">
-          <div className="sticky top-0 z-10 flex shrink-0 items-center gap-3 border-b border-[#eadccc] bg-white px-5 py-4 lg:static lg:justify-between lg:px-0 lg:py-0 lg:shadow-none">
+          <div className="m-3 flex min-h-0 flex-1 flex-col space-y-0 overflow-hidden rounded-3xl border border-border-default bg-white shadow-card lg:m-0 lg:overflow-visible lg:rounded-xl lg:border-0 lg:bg-transparent lg:shadow-none lg:block lg:flex-none lg:space-y-4">
+          <div className="sticky top-0 z-10 flex shrink-0 items-center gap-3 border-b border-border-default bg-white px-5 py-4 lg:static lg:justify-between lg:px-0 lg:py-0 lg:shadow-none">
             <button type="button" onClick={() => setSelectedId(null)} aria-label="Back to orders" className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-charcoal hover:bg-neutralTint focus:outline-none focus:ring-2 focus:ring-brand-red lg:hidden">
               <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="m15 18-6-6 6-6M9 12h12" /></svg>
             </button>
@@ -278,7 +278,7 @@ export function AdminDashboardContent() {
           {detail.data && (
             <div className="mt-4 min-w-0 space-y-4">
               {/* Status Header */}
-              <div className="flex min-w-0 items-start justify-between gap-2 border-b border-[#eadccc] pb-3">
+              <div className="flex min-w-0 items-start justify-between gap-2 border-b border-border-default pb-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="break-all font-heading text-lg font-bold text-charcoal">
@@ -335,7 +335,7 @@ export function AdminDashboardContent() {
               )}
 
               {/* Order Items */}
-              <div className="min-w-0 space-y-2 border-y border-[#eadccc] py-3 text-xs">
+              <div className="min-w-0 space-y-2 border-y border-border-default py-3 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="font-bold uppercase tracking-wider text-mutedGray text-caption">Order Items</span>
                   <span className="text-caption font-medium text-bodySecondary">
@@ -383,7 +383,7 @@ export function AdminDashboardContent() {
                   <span>Taxes (GST)</span>
                   <span>{formatINR(detail.data.tax)}</span>
                 </div>
-                <div className="flex items-center justify-between border-t border-[#eadccc] pt-2 text-sm font-bold text-charcoal">
+                <div className="flex items-center justify-between border-t border-border-default pt-2 text-sm font-bold text-charcoal">
                   <span>Total Amount</span>
                   <span className="text-brand-red font-heading text-base font-extrabold">{formatINR(detail.data.total)}</span>
                 </div>

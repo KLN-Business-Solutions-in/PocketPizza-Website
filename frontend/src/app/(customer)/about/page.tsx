@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "About Us — Pokket Pizza",
   description:
-    "The story behind Pokket Pizza — our slow-proofed sourdough, farm-fresh sourcing, and the craft behind every bake.",
+    "The story behind Pokket Pizza — our handmade dough, fresh ingredients, and the care behind every pizza.",
 };
 
 /**
@@ -20,11 +20,12 @@ const contact = {
 };
 
 const storyParagraphs = [
-  "Founded with a simple dream to bring affordable, high-quality, and delicious Italian-style pizzas to the neighborhood, Pokket Pizza has grown from a humble local spot into a community favorite. We believe in keeping things fresh, friendly, and flavor-packed.",
+  "Pokket Pizza is a small neighbourhood pizza kitchen run by Rajendra Virendra. We started with a simple idea: make fresh, honest pizza that people nearby can enjoy any day of the week, without it needing to be a special occasion.",
+  "Everything is made right here in our kitchen. The dough is prepared fresh, the toppings are prepped with care, and every pizza is baked to order. No shortcuts, no big claims — just good pizza made by a small team that cares.",
 ];
 
 const foundersQuote =
-  "We wanted to build a pizza brand that feels like a cozy artisanal neighborhood joint but operates with modern delivery speed. No compromises, just incredible crusts.";
+  "We're not trying to be the biggest pizza place in town. We just want to be the one you think of when you're hungry — fresh pizza, fair prices, and a smile when you walk in.";
 
 const doughParagraphs = [
   "What sets us apart from the rest? Our signature, freshly handmade pizza dough.",
@@ -47,13 +48,13 @@ const kitchenParagraphs = [
 const galleryImages = [
   {
     src: "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=800&q=80",
-    alt: "Hand kneading fresh sourdough dough",
+    alt: "Hand kneading fresh pizza dough",
     caption: "Hand Kneading Dough",
   },
   {
     src: "https://images.unsplash.com/photo-1541745537411-b8046dc6d66c?w=800&q=80",
-    alt: "Wood-fired oven baking our pizzas",
-    caption: "Wood-Fired Oven",
+    alt: "Freshly baked pizza from the oven",
+    caption: "Oven Pizza",
   },
   {
     src: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=800&q=80",
@@ -90,8 +91,8 @@ export default function AboutPage() {
 
       <div className="mx-auto max-w-6xl px-5 py-10 md:px-10 md:py-16">
         {/* Intro */}
-        <section>
-          <p className="max-w-3xl text-body leading-relaxed text-bodySecondary">
+        <section className="mx-auto max-w-3xl text-center">
+          <p className="text-balance text-body leading-relaxed text-bodySecondary md:text-xl">
             Welcome to Pokket Pizza, where our passion for great food meets a commitment to
             quality you can taste in every single bite. We believe that exceptional pizza
             doesn&apos;t have to be complicated — it just has to be made with the right
@@ -103,7 +104,7 @@ export default function AboutPage() {
         <section className="mt-12 rounded-2xl bg-charcoal p-6 text-white shadow-card md:p-10">
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10">
             <div className="lg:col-span-7">
-              <h2 className="font-heading text-h3 font-extrabold text-white md:text-h2">Our Heritage</h2>
+              <h2 className="font-heading text-h3 font-extrabold text-white md:text-h2">Our Story</h2>
               {storyParagraphs.map((paragraph, index) => (
                 <p key={index} className="mt-4 text-body leading-relaxed text-white/85">
                   {paragraph}
@@ -119,14 +120,14 @@ export default function AboutPage() {
                   aria-hidden="true"
                   className="grid h-10 w-10 place-items-center rounded-full bg-blushTint font-heading text-label font-bold text-brand-red"
                 >
-                  M&amp;L
+                  RV
                 </span>
                 <span>
                   <span className="block font-heading text-label font-bold text-charcoal">
-                    Marco &amp; Leo
+                    Rajendra Virendra
                   </span>
                   <span className="block text-caption text-bodySecondary">
-                    Co-Founders, Pokket Pizza
+                    Owner, Pokket Pizza
                   </span>
                 </span>
               </figcaption>
@@ -141,12 +142,16 @@ export default function AboutPage() {
           </h2>
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
             {doughParagraphs.map((paragraph, index) => (
-              <p
+              <div
                 key={index}
-                className="rounded-md bg-white p-4 text-body leading-relaxed text-bodySecondary shadow-card ring-1 ring-border-default"
+                className="flex items-start gap-3 rounded-md bg-white p-4 text-body leading-relaxed text-bodySecondary shadow-card ring-1 ring-border-default"
               >
-                {paragraph}
-              </p>
+                <span
+                  aria-hidden="true"
+                  className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand-red"
+                />
+                <span>{paragraph}</span>
+              </div>
             ))}
           </div>
         </section>
@@ -158,12 +163,16 @@ export default function AboutPage() {
           </h2>
           <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
             {sourcingParagraphs.map((paragraph, index) => (
-              <p
+              <div
                 key={index}
-                className="rounded-md bg-white p-4 text-body leading-relaxed text-bodySecondary shadow-card ring-1 ring-border-default"
+                className="flex items-start gap-3 rounded-md bg-white p-4 text-body leading-relaxed text-bodySecondary shadow-card ring-1 ring-border-default"
               >
-                {paragraph}
-              </p>
+                <span
+                  aria-hidden="true"
+                  className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand-red"
+                />
+                <span>{paragraph}</span>
+              </div>
             ))}
           </div>
         </section>
@@ -217,10 +226,11 @@ export default function AboutPage() {
         {/* CTA banner */}
         <section className="mt-12 rounded-2xl bg-blushTint p-6 text-center shadow-card ring-1 ring-border-default md:p-10">
           <h2 className="font-heading text-h3 font-extrabold text-brand-red md:text-h2">
-            Hungry for Real Sourdough?
+            Hungry for Pizza?
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-body leading-relaxed text-bodySecondary">
-            Get premium wood-fired goodness delivered to your doorstep in minutes.
+            Hand-stretched dough, fresh toppings and freshly baked pizza — delivered hot to
+            your doorstep in minutes.
           </p>
           <Link
             href="/menu"

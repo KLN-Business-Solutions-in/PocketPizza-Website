@@ -41,10 +41,11 @@ function LoginForm() {
         password,
       });
       const redirectTo = searchParams.get("redirectTo");
-      const destination =
-        redirectTo === "/admin" || redirectTo?.startsWith("/admin/")
-          ? redirectTo
-          : "/admin/dashboard";
+      const isSafeAdminPath =
+        typeof redirectTo === "string" &&
+        redirectTo.startsWith("/admin/") &&
+        !redirectTo.startsWith("/admin/login");
+      const destination = isSafeAdminPath ? redirectTo : "/admin/dashboard";
       router.push(destination);
     } catch (err) {
       const api = err as ApiError;

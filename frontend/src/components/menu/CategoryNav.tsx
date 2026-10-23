@@ -47,7 +47,7 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({
           className={cn(
             "whitespace-nowrap shrink-0 px-3 py-1.5 rounded-xl text-label font-heading font-semibold transition-all border",
             vegOnly
-              ? "bg-[#25D366] text-white border-[#25D366] shadow-card"
+              ? "bg-status-whatsapp text-white border-status-whatsapp shadow-card"
               : "bg-white text-charcoal border-border-default hover:bg-neutralTint"
           )}
         >
@@ -66,7 +66,7 @@ export const CategoryNav: React.FC<CategoryNavProps> = ({
             className={cn(
               "shrink-0 whitespace-nowrap px-2.5 py-1 rounded-xl text-label font-heading font-semibold transition-all border",
               vegOnly
-                ? "bg-[#25D366] text-white border-[#25D366] shadow-card"
+                ? "bg-status-whatsapp text-white border-status-whatsapp shadow-card"
                 : "bg-white text-charcoal border-border-default hover:bg-neutralTint"
             )}
           >
