@@ -35,24 +35,6 @@ function BagIcon({ className }: { className?: string }) {
   );
 }
 
-function SettingsIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden="true"
-    >
-      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -141,7 +123,7 @@ export default function Navbar() {
                 className="grid h-11 w-11 place-items-center rounded-full text-charcoal transition-colors hover:bg-neutralTint focus:outline-none focus:ring-2 focus:ring-brand-red"
               >
                 <span
-                  className="grid h-7 w-7 place-items-center rounded-full bg-blushTint font-heading text-xs font-bold text-brand-red"
+                  className="grid h-9 w-9 place-items-center rounded-full bg-blushTint font-heading text-xs font-bold text-brand-red"
                   aria-hidden="true"
                 >
                   {customer.name.trim().charAt(0).toUpperCase()}
@@ -194,21 +176,14 @@ export default function Navbar() {
               )}
             </div>
           ) : null}
-          {customer ? (
-            <Link
-              href="/settings"
-              aria-label="Settings"
-              className="grid h-11 w-11 place-items-center rounded-full text-charcoal transition-colors hover:bg-neutralTint focus:outline-none focus:ring-2 focus:ring-brand-red"
-            >
-              <SettingsIcon className="h-5 w-5" />
-            </Link>
-          ) : null}
           <Link
             href="/cart"
             aria-label={hasHydrated ? `Cart (${cartCount})` : "Cart"}
-            className="flex items-center gap-1 rounded-full bg-blushTint px-2.5 py-2 font-heading text-xs font-semibold text-brand-red transition-colors hover:bg-brand-red hover:text-white sm:gap-1.5 sm:px-4"
+            className="group flex h-11 w-11 shrink-0 items-center justify-center rounded-full p-0 font-heading text-xs font-semibold text-brand-red transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red sm:w-auto sm:gap-1.5 sm:bg-blushTint sm:px-4 sm:hover:bg-brand-red sm:hover:text-white"
           >
-            <BagIcon className="h-3.5 w-3.5" />
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-blushTint transition-colors group-hover:bg-brand-red group-hover:text-white sm:h-auto sm:w-auto sm:bg-transparent sm:group-hover:bg-transparent sm:group-hover:text-inherit">
+              <BagIcon className="h-4 w-4" />
+            </span>
             <span className="hidden sm:inline">{hasHydrated ? `Cart (${cartCount})` : "Cart"}</span>
           </Link>
           {!customer && (
@@ -218,7 +193,7 @@ export default function Navbar() {
           )}
           <button
             type="button"
-            className="grid h-9 w-8 place-items-center rounded-md text-charcoal hover:bg-neutralTint sm:w-9 md:hidden"
+            className="grid h-11 w-11 place-items-center rounded-md text-charcoal hover:bg-neutralTint md:hidden"
             onClick={() => setOpen((v) => !v)}
             aria-label={open ? "Close menu" : "Open menu"}
             aria-expanded={open}
@@ -241,15 +216,7 @@ export default function Navbar() {
           className="flex flex-col gap-1 border-t border-border-default bg-white px-5 py-3 md:hidden"
           aria-label="Mobile"
         >
-          {[
-            ...(customer
-              ? [
-                  { href: "/profile", label: "Profile" },
-                  { href: "/settings", label: "Settings" },
-                ]
-              : []),
-            ...links,
-          ].map((l) => (
+          {links.map((l) => (
             <Link
               key={l.label}
               href={l.href}
