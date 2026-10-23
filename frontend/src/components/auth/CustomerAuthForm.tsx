@@ -17,16 +17,23 @@ import { Logo } from "@/components/ui/Logo";
 type AuthMode = "login" | "signup";
 type FieldErrors = Partial<Record<"name" | "phone" | "email" | "password", string>>;
 
-function getDestination(value: string | null): string {
-  if (
+function isSafeDestination(value: string | null): value is string {
+  return Boolean(
     value &&
     value.startsWith("/") &&
     !value.startsWith("//") &&
     !value.includes("\\") &&
     !value.startsWith("/admin")
-  ) {
-    return value;
-  }
+  );
+}
+
+function getSafeDestination(searchParams: { get: (name: string) => string | null }): string {
+  const next = searchParams.get("next");
+  if (isSafeDestination(next)) return next;
+
+  const redirectTo = searchParams.get("redirectTo");
+  if (isSafeDestination(redirectTo)) return redirectTo;
+
   return "/";
 }
 
@@ -76,7 +83,6 @@ export default function CustomerAuthForm({ mode }: { mode: AuthMode }) {
   const isSignup = mode === "signup";
   const router = useRouter();
   const searchParams = useSearchParams();
-  const destination = getDestination(searchParams.get("redirectTo"));
   const session = useCustomerSession();
   const login = useCustomerLogin();
   const signup = useCustomerSignup();
@@ -87,11 +93,14 @@ export default function CustomerAuthForm({ mode }: { mode: AuthMode }) {
   const [showPassword, setShowPassword] = React.useState(false);
   const [fieldErrors, setFieldErrors] = React.useState<FieldErrors>({});
   const [banner, setBanner] = React.useState<React.ReactNode>(null);
+  const submitNavigationRef = React.useRef(false);
   const isPending = login.isPending || signup.isPending;
 
   React.useEffect(() => {
-    if (session.data?.loggedIn) router.replace(destination);
-  }, [destination, router, session.data]);
+    if (session.data?.loggedIn && !submitNavigationRef.current) {
+      router.replace(getSafeDestination(searchParams));
+    }
+  }, [router, searchParams, session.data]);
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -128,6 +137,7 @@ export default function CustomerAuthForm({ mode }: { mode: AuthMode }) {
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
+    submitNavigationRef.current = true;
     try {
       if (isSignup) {
         await signup.mutateAsync({
@@ -139,8 +149,9 @@ export default function CustomerAuthForm({ mode }: { mode: AuthMode }) {
       } else {
         await login.mutateAsync({ phone: normalizedPhone, password });
       }
-      router.replace(destination);
+      router.replace(getSafeDestination(searchParams));
     } catch (error) {
+      submitNavigationRef.current = false;
       const apiError = error as ApiError;
       if (!isSignup && (apiError.status === 401 || apiError.code === "AUTHENTICATION_INVALID")) {
         setBanner("Invalid phone or password");
