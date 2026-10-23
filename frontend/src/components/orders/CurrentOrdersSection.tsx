@@ -151,7 +151,7 @@ export function CurrentOrdersSection() {
   }
 
   return (
-    <section aria-labelledby="current-orders-title" className="space-y-4">
+    <section id="current-orders" aria-labelledby="current-orders-title" className="space-y-4">
       <div>
         <h2 id="current-orders-title" className="font-heading text-h3 font-bold text-charcoal">Your current orders</h2>
         <p className="mt-1 text-body text-bodySecondary">Follow the latest status of your orders.</p>
