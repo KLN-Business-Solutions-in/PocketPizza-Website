@@ -1,5 +1,5 @@
-import { Router } from 'express';
-import { ah } from '../../utils/async-handler';
+import { Hono } from 'hono';
+import { wrap } from '../../http/express-adapter';
 import {
   cancelDeletionController,
   changePasswordController,
@@ -15,20 +15,20 @@ import {
 } from './customer.controller';
 
 // mounted at /api/v1/customer behind requireCustomer (see app.ts)
-export const customerRouter = Router();
+export const customerRouter = new Hono();
 
-customerRouter.get('/me', ah(getProfileController));
-customerRouter.patch('/me', ah(patchProfileController));
+customerRouter.get('/me', wrap(getProfileController));
+customerRouter.patch('/me', wrap(patchProfileController));
 
-customerRouter.get('/me/preferences', ah(getPreferencesController));
-customerRouter.patch('/me/preferences', ah(patchPreferencesController));
+customerRouter.get('/me/preferences', wrap(getPreferencesController));
+customerRouter.patch('/me/preferences', wrap(patchPreferencesController));
 
-customerRouter.get('/me/addresses', ah(listAddressesController));
-customerRouter.post('/me/addresses', ah(createAddressController));
-customerRouter.patch('/me/addresses/:id', ah(patchAddressController));
-customerRouter.delete('/me/addresses/:id', ah(deleteAddressController));
+customerRouter.get('/me/addresses', wrap(listAddressesController));
+customerRouter.post('/me/addresses', wrap(createAddressController));
+customerRouter.patch('/me/addresses/:id', wrap(patchAddressController));
+customerRouter.delete('/me/addresses/:id', wrap(deleteAddressController));
 
-customerRouter.patch('/me/password', ah(changePasswordController));
+customerRouter.patch('/me/password', wrap(changePasswordController));
 
-customerRouter.post('/me/deletion-request', ah(requestDeletionController));
-customerRouter.delete('/me/deletion-request', ah(cancelDeletionController));
+customerRouter.post('/me/deletion-request', wrap(requestDeletionController));
+customerRouter.delete('/me/deletion-request', wrap(cancelDeletionController));

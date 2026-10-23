@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pokket-pizza-api",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "NODE_ENV": "production",
+    "JWT_ISSUER": "pokket-pizza",
+    "JWT_AUDIENCE": "pokket-pizza-admin",
+    "ACCESS_TOKEN_TTL": "7d",
+    "REFRESH_TOKEN_TTL_DAYS": "30",
+    "COOKIE_DOMAIN": "",
+    "CORS_ORIGIN": "http://localhost:3000",
+    "SHOP_LATITUDE": "18.456165955627945",
+    "SHOP_LONGITUDE": "73.86959266088635",
+    "LOG_LEVEL": "info"
+  }
+}

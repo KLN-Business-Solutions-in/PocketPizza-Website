@@ -1,19 +1,16 @@
-import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import cookieParser from 'cookie-parser';
-import crypto from 'crypto';
-import pinoHttp from 'pino-http';
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { secureHeaders } from 'hono/secure-headers';
 import { env } from './config/env';
 import { logger } from './utils/logger';
+import { AppError } from './utils/errors';
 import { globalRateLimit } from './middleware/rateLimit.middleware';
-import { errorHandler, notFoundHandler } from './middleware/error.middleware';
+import { requireAdmin, requireCustomer } from './middleware/auth.middleware';
 import { sendSuccess } from './utils/response';
-import { ah } from './utils/async-handler';
-import { getPrisma } from './config/database';
+import { getPrisma, isWorkersRuntime, runWithRequestDatabase } from './config/database';
+import { getRequestId, handleNotFound, wrap, wrapMiddleware } from './http/express-adapter';
 import { menuRouter } from './modules/menu/menu.routes';
 import { authRouter } from './modules/auth/auth.routes';
-import { requireAdmin, requireCustomer } from './middleware/auth.middleware';
 import { adminRouter } from './modules/admin/admin.routes';
 import { orderRouter } from './modules/orders/order.routes';
 import { restaurantRouter } from './modules/restaurant/restaurant.routes';
@@ -32,71 +29,70 @@ function sanitizeLogUrl(url: string | undefined): string | undefined {
     .replace(/([?&]token=)[^&]+/gi, '$1[redacted]');
 }
 
-const app = express();
+const allowedOrigins = new Set(
+  env.CORS_ORIGIN.split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+);
 
-app.set('trust proxy', 1);
+const app = new Hono();
 
-app.use(helmet());
+// Each Workers request owns its database client: pooled I/O cannot be reused
+// across request contexts in workerd.
+app.use('*', async (_c, next) => {
+  if (!isWorkersRuntime) return next();
+  return runWithRequestDatabase(next);
+});
+
+app.use('*', secureHeaders());
 
 app.use(
+  '*',
   cors({
-    origin: env.CORS_ORIGIN.split(',').map((o) => o.trim()),
+    origin: (origin) => (allowedOrigins.has(origin) ? origin : ''),
     credentials: true,
+    allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization'],
   }),
 );
 
-app.use(cookieParser());
-
-app.use((req, _res, next) => {
-  req.id = `req_${crypto.randomUUID().slice(0, 12)}`;
-  next();
+// request id + structured access log (tokens and phones redacted)
+app.use('*', async (c, next) => {
+  const id = getRequestId(c);
+  const startedAt = Date.now();
+  try {
+    await next();
+  } finally {
+    const url = new URL(c.req.url);
+    logger.info(
+      {
+        req: {
+          id,
+          method: c.req.method,
+          url: sanitizeLogUrl(`${url.pathname}${url.search}`),
+          remoteAddress: c.req.header('cf-connecting-ip') ?? undefined,
+        },
+        res: { statusCode: c.res?.status ?? 500 },
+        responseTime: Date.now() - startedAt,
+      },
+      'request completed',
+    );
+  }
 });
 
-app.use(
-  pinoHttp({
-    logger,
-    genReqId: (req) => req.id ?? `req_${crypto.randomUUID().slice(0, 12)}`,
-    redact: [
-      'req.headers.cookie',
-      'req.headers.authorization',
-      '*.password',
-      '*.passwordHash',
-      '*.token',
-      '*.refreshToken',
-      '*.accessToken',
-    ],
-    serializers: {
-      req: (req: {
-        id?: string;
-        method?: string;
-        url?: string;
-        socket?: { remoteAddress?: string; remotePort?: number };
-        remoteAddress?: string;
-        remotePort?: number;
-      }) => ({
-        id: req.id,
-        method: req.method,
-        url: sanitizeLogUrl(req.url),
-        remoteAddress: req.remoteAddress ?? req.socket?.remoteAddress,
-        remotePort: req.remotePort ?? req.socket?.remotePort,
-      }),
-    },
+app.use('*', globalRateLimit);
+
+app.get(
+  '/health',
+  wrap((_req, res) => {
+    sendSuccess(res, { status: 'ok' });
   }),
 );
-
-app.use(globalRateLimit);
-
-// after req.id + pino-http so parse failures carry a requestId and hit the access log
-app.use(express.json({ limit: '100kb' }));
-
-app.get('/health', (_req, res) => {
-  sendSuccess(res, { status: 'ok' });
-});
 
 app.get(
   '/health/db',
-  requireAdmin,
-  ah(async (_req, res) => {
+  wrapMiddleware(requireAdmin),
+  wrap(async (_req, res) => {
     const prisma = await getPrisma();
 
     const restaurant = await prisma.restaurant.findFirst({
@@ -121,17 +117,53 @@ app.get(
   }),
 );
 
-app.use('/api/v1/auth', authRouter);
-app.use('/api/v1/admin', requireAdmin, adminRouter);
-app.use('/api/v1/customer', requireCustomer, customerRouter);
-app.use('/api/v1', menuRouter);
-app.use('/api/v1', orderRouter);
-app.use('/api/v1', restaurantRouter);
+app.route('/api/v1/auth', authRouter);
+
+app.use('/api/v1/admin/*', wrapMiddleware(requireAdmin));
+app.route('/api/v1/admin', adminRouter);
+
+app.use('/api/v1/customer/*', wrapMiddleware(requireCustomer));
+app.route('/api/v1/customer', customerRouter);
+
+app.route('/api/v1', menuRouter);
+app.route('/api/v1', orderRouter);
+app.route('/api/v1', restaurantRouter);
+
 // Twilio status callbacks live outside /api/v1 and are signed, not cookie-authed
-app.use('/api/webhooks', twilioWebhookRouter);
+app.route('/api/webhooks', twilioWebhookRouter);
 
-app.use(notFoundHandler);
+app.notFound(handleNotFound);
 
-app.use(errorHandler);
+app.onError((err, c) => {
+  const requestId = getRequestId(c);
+  const status = err instanceof AppError ? err.httpStatus : 500;
+  const code = err instanceof AppError ? err.code : 'INTERNAL_ERROR';
+  const message =
+    err instanceof AppError
+      ? err.message
+      : env.NODE_ENV === 'production'
+        ? 'Internal server error'
+        : err.message;
+
+  if (!(err instanceof AppError)) {
+    logger.error({ err, requestId }, 'Unhandled error');
+  }
+
+  return new Response(
+    JSON.stringify({
+      success: false,
+      error: {
+        code,
+        message,
+        ...(err instanceof AppError && err.details ? { details: err.details } : {}),
+      },
+      requestId,
+    }),
+    {
+      status,
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    },
+  );
+});
 
 export { app };

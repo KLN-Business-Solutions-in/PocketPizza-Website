@@ -83,18 +83,18 @@ export default function AdminOrderHistoryPage() {
     page,
     pageSize: PAGE_SIZE,
   });
-  const selectedOrder = useAdminOrderDetail(selectedId ?? undefined);
-
   const list: AdminOrderSummary[] = Array.isArray(orders.data)
     ? orders.data
     : orders.data?.items ?? [];
   const hasNextPage = list.length === PAGE_SIZE;
 
-  React.useEffect(() => {
-    if (list.length > 0 && !list.some((order) => order.id === selectedId)) {
-      setSelectedId(list[0].id);
-    }
-  }, [list, selectedId]);
+  // Derive the active row instead of syncing selectedId from an effect. When
+  // filters or pages change, fall back to the first row of the new result set.
+  const activeSelectedId =
+    selectedId && list.some((order) => order.id === selectedId)
+      ? selectedId
+      : list[0]?.id ?? null;
+  const selectedOrder = useAdminOrderDetail(activeSelectedId ?? undefined);
 
   return (
     <div className="min-w-0 space-y-5 pb-12 sm:space-y-6">
@@ -179,7 +179,7 @@ export default function AdminOrderHistoryPage() {
                   </thead>
                   <tbody>
                     {list.map((order) => {
-                      const isSelected = selectedId === order.id;
+                      const isSelected = activeSelectedId === order.id;
                       return (
                         <tr
                           key={order.id}

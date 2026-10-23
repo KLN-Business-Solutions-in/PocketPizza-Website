@@ -24,6 +24,7 @@ out/
 .next/
 .nuxt/
 .vite/
+.wrangler/
 *.min.js
 *.min.css
 
@@ -33,6 +34,9 @@ out/
 .env.*.local
 .env.development
 .env.production
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
 
 # --- OS files ---
 .DS_Store
@@ -70,12 +74,9 @@ tmp/
 temp/
 
 # --- Design source files (binary — not diffable) ---
-# docs/ is NOT ignored — only binary design files inside it
-# docs/*.fig
-# docs/*.pdf
-# docs/*.sketch
-# docs/*.xd
-docs/
+# Keep markdown docs; ignore binary design assets and PDFs inside docs/.
+docs/*
+!docs/*.md
 doc/
 AGENTS.md   
 opencode.json
@@ -84,3 +85,4 @@ skills-lock.json
 .agents/
 /generated/prisma
 /backend/src/generated/prisma
+/backend/src/generated/prisma-node

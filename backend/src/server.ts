@@ -1,13 +1,21 @@
+import 'dotenv/config';
+import { serve } from '@hono/node-server';
 import { app } from './app';
 import { env } from './config/env';
 import { logger } from './utils/logger';
 import { getPrisma } from './config/database';
 import { logDispatchConfig } from './modules/notifications/notification.service';
 
-const server = app.listen(env.PORT, () => {
-  logger.info({ port: env.PORT, env: env.NODE_ENV }, 'Server started');
-  logDispatchConfig();
-});
+const server = serve(
+  {
+    fetch: app.fetch,
+    port: env.PORT,
+  },
+  (info) => {
+    logger.info({ port: info.port, env: env.NODE_ENV }, 'Server started');
+    logDispatchConfig();
+  },
+);
 
 let shuttingDown = false;
 
@@ -39,7 +47,7 @@ function shutdown(signal: string): void {
   });
   // reap idle keep-alive sockets so the close callback can fire without
   // waiting out keepAliveTimeout/the forced-kill deadline
-  server.closeIdleConnections();
+  (server as unknown as { closeIdleConnections?: () => void }).closeIdleConnections?.();
 }
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));

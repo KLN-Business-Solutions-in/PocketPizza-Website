@@ -1,10 +1,5 @@
 import { z } from 'zod';
-import dotenv from 'dotenv';
 
-dotenv.config();
-
-// Blank ("not set yet") is treated as absent; a present-but-garbage value is a
-// boot error rather than silently becoming 0,0 (the Gulf of Guinea).
 const optionalShopCoordinate = (min: number, max: number) =>
   z.preprocess(
     (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
@@ -14,24 +9,16 @@ const optionalShopCoordinate = (min: number, max: number) =>
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(4000),
-  DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
+  DATABASE_URL: z.string().optional().default(''),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   JWT_ISSUER: z.string().default('pokket-pizza'),
   JWT_AUDIENCE: z.string().default('pokket-pizza-admin'),
   ACCESS_TOKEN_TTL: z.string().default('7d'),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().default(30),
   COOKIE_DOMAIN: z.string().optional().default(''),
-  CORS_ORIGIN: z.string().min(1, 'CORS_ORIGIN is required'),
-  // Shop map-pin coordinates for the straight-line delivery fee (see
-  // utils/deliveryDistance.ts). Server-side only — never sent to or read from
-  // the customer's browser. Optional so a deployment missing them still boots;
-  // DELIVERY orders that carry customer coordinates are then rejected at
-  // runtime instead of being charged a guessed fee.
+  CORS_ORIGIN: z.string().optional().default('http://localhost:3000'),
   SHOP_LATITUDE: optionalShopCoordinate(-90, 90),
   SHOP_LONGITUDE: optionalShopCoordinate(-180, 180),
-  // Twilio WhatsApp (Content API). Empty values are allowed so the server can
-  // boot without credentials — sends then fail cleanly and are logged, and the
-  // status webhook reports WEBHOOK_NOT_CONFIGURED until AUTH_TOKEN is set.
   TWILIO_ACCOUNT_SID: z.string().optional().default(''),
   TWILIO_AUTH_TOKEN: z.string().optional().default(''),
   TWILIO_WHATSAPP_NUMBER: z.string().optional().default(''),
@@ -51,8 +38,7 @@ function loadEnv(): EnvInput {
       .map(([key, val]) => `  ${key}: ${val?.join(', ')}`)
       .join('\n');
 
-    console.error(`\n Invalid environment variables:\n${message}\n`);
-    process.exit(1);
+    throw new Error(`\n Invalid environment variables:\n${message}\n`);
   }
 
   return result.data;

@@ -1,10 +1,7 @@
 "use client";
 
-import React from "react";
 import type { OrderStatus, OrderType } from "@shared/contract/contract";
 import { formatINR } from "@/lib/money";
-import { getOrderTransitions, OrderActionButton } from "@/components/admin/OrderActionButton";
-import { Button } from "@/components/ui/Button";
 
 export type KanbanOrder = {
   id: string;
@@ -28,8 +25,6 @@ interface KanbanBoardProps {
   orders: KanbanOrder[];
   onSelectOrder?: (id: string) => void;
   selectedId?: string | null;
-  onUpdateStatus?: (id: string, status: OrderStatus) => Promise<void> | void;
-  isUpdating?: boolean;
   emptyMessage?: string;
 }
 
@@ -50,30 +45,14 @@ export function KanbanBoard({
   orders,
   onSelectOrder,
   selectedId,
-  onUpdateStatus,
-  isUpdating,
   emptyMessage = "No orders",
 }: KanbanBoardProps) {
-  const [updatingId, setUpdatingId] = React.useState<string | null>(null);
-
-  const handleTransition = async (orderId: string, nextStatus: OrderStatus, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!onUpdateStatus) return;
-    setUpdatingId(orderId);
-    try {
-      await onUpdateStatus(orderId, nextStatus);
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
   const sorted = [...orders].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 
   const renderOrderRow = (order: KanbanOrder) => {
     const isSelected = selectedId === order.id;
-    const transitions = getOrderTransitions(order.status, order.orderType);
     const itemCount = order.items
       ? order.items.reduce((sum, item) => sum + (item.quantity || 1), 0)
       : 1;

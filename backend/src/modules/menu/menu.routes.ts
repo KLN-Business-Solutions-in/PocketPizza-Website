@@ -1,5 +1,5 @@
-import { Router } from 'express';
-import { ah } from '../../utils/async-handler';
+import { Hono } from 'hono';
+import { wrap } from '../../http/express-adapter';
 import {
   listMenu,
   getProductById,
@@ -9,13 +9,13 @@ import {
   toggleProductStatusController,
 } from './menu.controller';
 
-export const menuRouter = Router();
-export const menuAdminRouter = Router();
+export const menuRouter = new Hono();
+export const menuAdminRouter = new Hono();
 
-menuRouter.get('/menu', ah(listMenu));
-menuRouter.get('/products/:id', ah(getProductById));
+menuRouter.get('/menu', wrap(listMenu));
+menuRouter.get('/products/:id', wrap(getProductById));
 
-menuAdminRouter.get('/menu', ah(listAdminMenu));
-menuAdminRouter.post('/products', ah(createProductController));
-menuAdminRouter.patch('/products/:id', ah(updateProductController));
-menuAdminRouter.patch('/products/:id/status', ah(toggleProductStatusController));
+menuAdminRouter.get('/menu', wrap(listAdminMenu));
+menuAdminRouter.post('/products', wrap(createProductController));
+menuAdminRouter.patch('/products/:id', wrap(updateProductController));
+menuAdminRouter.patch('/products/:id/status', wrap(toggleProductStatusController));

@@ -1,7 +1,7 @@
-import argon2 from 'argon2';
 import { AuthError, NotFoundError, ValidationError } from '../../utils/errors';
+import { hashPassword, verifyPassword } from '../../utils/password';
+import { assertStrongPassword } from '../../utils/passwordPolicy';
 import { toCustomerPreferences, type CustomerPreferences } from '../auth/auth.types';
-import { assertStrongPassword } from '../auth/auth.customer.service';
 import {
   countAddresses,
   createAddressRow,
@@ -188,7 +188,7 @@ export async function changePassword(
   if (!row) throw new AuthError();
 
   const currentOk =
-    row.passwordHash !== null && (await argon2.verify(row.passwordHash, body.currentPassword));
+    row.passwordHash !== null && (await verifyPassword(row.passwordHash, body.currentPassword));
   if (!currentOk) {
     throw new ValidationError('Current password is incorrect', [
       'currentPassword: does not match the account password',
@@ -201,7 +201,7 @@ export async function changePassword(
   }
 
   assertStrongPassword(body.newPassword, [row.name, row.phone]);
-  await updateCustomerPassword(customerId, await argon2.hash(body.newPassword));
+  await updateCustomerPassword(customerId, await hashPassword(body.newPassword));
   return { ok: true };
 }
 
