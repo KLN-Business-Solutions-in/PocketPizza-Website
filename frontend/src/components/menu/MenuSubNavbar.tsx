@@ -16,7 +16,6 @@ interface MenuSubNavbarProps {
   onChangeSearch: (query: string) => void;
   sortBy: "popular" | "price-asc" | "price-desc" | "name";
   onChangeSortBy: (sort: "popular" | "price-asc" | "price-desc" | "name") => void;
-  totalCount: number;
 }
 
 export function MenuSubNavbar({
@@ -29,7 +28,6 @@ export function MenuSubNavbar({
   onChangeSearch,
   sortBy,
   onChangeSortBy,
-  totalCount,
 }: MenuSubNavbarProps) {
   const sortedCategories = [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
 
@@ -121,7 +119,7 @@ export function MenuSubNavbar({
               className={cn(
                 "px-3 py-1 rounded-full transition-all text-xs",
                 dietary === "VEG"
-                  ? "bg-[#25D366] text-white shadow-xs font-bold"
+                  ? "bg-status-whatsapp text-white shadow-xs font-bold"
                   : "text-bodySecondary hover:text-charcoal"
               )}
             >
@@ -133,7 +131,7 @@ export function MenuSubNavbar({
               className={cn(
                 "px-3 py-1 rounded-full transition-all text-xs",
                 dietary === "NON_VEG"
-                  ? "bg-[#D62828] text-white shadow-xs font-bold"
+                  ? "bg-brand-red text-white shadow-xs font-bold"
                   : "text-bodySecondary hover:text-charcoal"
               )}
             >
@@ -164,10 +162,6 @@ export function MenuSubNavbar({
               </svg>
             </div>
           </div>
-
-          <span className="hidden sm:inline-block text-caption text-bodySecondary font-medium pl-1">
-            ({totalCount})
-          </span>
         </div>
       </div>
     </div>

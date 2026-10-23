@@ -1,6 +1,77 @@
-@import "tailwindcss";
+@import "tailwindcss" source(none);
 
-@config "../../tailwind.config.ts";
+@source "../../src";
+
+@theme {
+  /* Colours */
+  --color-brand: #d62828;
+  --color-brand-red: #d62828;
+  --color-charcoal: #2b2b2b;
+  --color-charcoal-alt: #3b3b3b;
+  --color-bodySecondary: #615e5a;
+  --color-mutedGray: #969089;
+  --color-cream-bg: #fff8f0;
+  --color-cream-alt: #fff5e6;
+  --color-offWhiteAlt: #fffdf9;
+  --color-blushTint: #fdf0ee;
+  --color-neutralTint: #f5f3ee;
+  --color-status-successBg: #e8fdf0;
+  --color-status-errorBg: #fff0ee;
+  --color-status-warning: #ff9500;
+  --color-status-star: #ffc107;
+  --color-status-whatsapp: #25d366;
+  --color-status-info: #007aff;
+  --color-border-default: #eadcc9;
+  --color-border-active: #d62828;
+  --color-border-dark: #2b2b2b;
+
+  /* Typography */
+  --font-heading: var(--font-outfit), "Outfit", sans-serif;
+  --font-body: var(--font-inter), "Inter", sans-serif;
+  --text-display-xl: 56px;
+  --text-display-xl--line-height: 1;
+  --text-display-l: 48px;
+  --text-display-l--line-height: 1;
+  --text-h1: 40px;
+  --text-h1--line-height: 1;
+  --text-h1-alt: 36px;
+  --text-h1-alt--line-height: 1;
+  --text-h2: 28px;
+  --text-h2--line-height: 1;
+  --text-h3: 24px;
+  --text-h3--line-height: 1;
+  --text-h4: 18px;
+  --text-h4--line-height: 1;
+  --text-h4-alt: 16px;
+  --text-h4-alt--line-height: 1;
+  --text-button: 16px;
+  --text-button--line-height: 1;
+  --text-label: 14px;
+  --text-label--line-height: 1;
+  --text-body: 14px;
+  --text-body--line-height: 1.5;
+  --text-caption: 12px;
+  --text-caption--line-height: 1;
+  --text-tag: 11px;
+  --text-tag--line-height: 1;
+
+  /* Shape and elevation */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 26px;
+  --radius-modal: 18px;
+  --radius-pill: 100px;
+  --shadow-card: 0px 6px 16px rgba(71, 60, 53, 0.06);
+  --shadow-elevated: 0px 4px 12px rgba(0, 0, 0, 0.2);
+
+  /* Breakpoints */
+  --breakpoint-mobile: 375px;
+  --breakpoint-desktop: 1440px;
+  --breakpoint-admin: 1446px;
+}
 
 html {
   color-scheme: light;

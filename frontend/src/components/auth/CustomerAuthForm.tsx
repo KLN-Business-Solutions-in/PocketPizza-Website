@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { indianPhoneSchema } from "@shared/contract/contract";
 import { ApiError } from "@/lib/api/client";
 import {
@@ -72,11 +72,16 @@ function Field({
   );
 }
 
-export default function CustomerAuthForm({ mode }: { mode: AuthMode }) {
+export default function CustomerAuthForm({
+  mode,
+  redirectTo = null,
+}: {
+  mode: AuthMode;
+  redirectTo?: string | null;
+}) {
   const isSignup = mode === "signup";
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const destination = getDestination(searchParams.get("redirectTo"));
+  const destination = getDestination(redirectTo);
   const session = useCustomerSession();
   const login = useCustomerLogin();
   const signup = useCustomerSignup();
@@ -88,6 +93,14 @@ export default function CustomerAuthForm({ mode }: { mode: AuthMode }) {
   const [fieldErrors, setFieldErrors] = React.useState<FieldErrors>({});
   const [banner, setBanner] = React.useState<React.ReactNode>(null);
   const isPending = login.isPending || signup.isPending;
+
+  // The server and the first client render must agree on the loading shell,
+  // even when React Query already has a session snapshot in its client cache.
+  const hasMounted = React.useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   React.useEffect(() => {
     if (session.data?.loggedIn) router.replace(destination);
@@ -160,7 +173,7 @@ export default function CustomerAuthForm({ mode }: { mode: AuthMode }) {
     }
   };
 
-  if (session.isLoading || session.data?.loggedIn) {
+  if (!hasMounted || session.isLoading || session.data?.loggedIn) {
     return (
       <main className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-cream-bg px-4 pt-10 pb-28 md:py-10">
         <p className="text-body text-bodySecondary">Checking your account…</p>

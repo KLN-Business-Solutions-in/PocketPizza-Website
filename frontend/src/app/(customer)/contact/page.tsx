@@ -33,7 +33,7 @@ export default function ContactPage() {
       <section className="relative left-1/2 h-[260px] w-screen -translate-x-1/2 overflow-hidden md:h-[340px]">
         <Image
           src="https://images.unsplash.com/photo-1513104890138-7c749659a591?w=1600&q=80"
-          alt="Wood-fired artisan pizza"
+          alt="Oven-baked artisan pizza"
           fill
           loading="eager"
           sizes="100vw"

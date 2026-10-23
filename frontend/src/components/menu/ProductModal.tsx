@@ -172,16 +172,13 @@ export function ProductModal({
         aria-live="polite"
       >
         <div>
-          <p className="text-caption uppercase tracking-wide text-mutedGray">Indicative total</p>
+          <p className="text-caption uppercase tracking-wide text-mutedGray">Total</p>
           <p className="text-caption text-bodySecondary">
             {qty} × {formatINR(unitPrice)}
           </p>
         </div>
         <p className="font-heading font-extrabold text-h4 text-charcoal">{indicativeTotal}</p>
       </div>
-      <p className="mt-3 text-caption text-mutedGray">
-        Indicative only. Final total is calculated securely by the server at checkout. Prices in INR.
-      </p>
     </Modal>
   );
 }
