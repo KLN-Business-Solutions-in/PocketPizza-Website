@@ -96,41 +96,50 @@ export default function AdminOrderHistoryPage() {
 
   return (
     <div className="min-w-0 space-y-5 pb-12 sm:space-y-6">
-      <div className="min-w-0">
-        <h1 className="font-heading text-h2 font-bold">Completed Records</h1>
-        <p className="mt-1 text-body text-bodySecondary">
-          Browse completed orders.
-        </p>
-      </div>
-
-      <Card className="min-w-0 p-4 sm:p-6">
-        <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-          <label className="flex flex-col gap-1 text-caption font-semibold text-bodySecondary">
-            From
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(event) => {
-                setDateFrom(event.target.value);
-                setPage(1);
-              }}
-              className="w-full min-w-0 rounded-md border border-border-default bg-white px-3 py-2 text-body text-charcoal"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-caption font-semibold text-bodySecondary">
-            To
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(event) => {
-                setDateTo(event.target.value);
-                setPage(1);
-              }}
-              className="w-full min-w-0 rounded-md border border-border-default bg-white px-3 py-2 text-body text-charcoal"
-            />
-          </label>
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="font-heading text-h2 font-bold">Completed Records</h1>
+          <p className="mt-1 text-body text-bodySecondary">
+            Browse completed orders.
+          </p>
         </div>
-      </Card>
+        <details className="group relative shrink-0">
+          <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-lg border border-border-default bg-white px-3 py-2 text-caption font-semibold text-charcoal shadow-card hover:border-brand-red focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-red [&::-webkit-details-marker]:hidden">
+            Date filters
+            <svg aria-hidden="true" className="h-4 w-4 transition-transform group-open:rotate-180" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M5.22 7.47a.75.75 0 0 1 1.06 0L10 11.19l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 8.53a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
+            </svg>
+          </summary>
+          <div className="absolute left-0 right-auto z-30 mt-2 grid w-[min(21rem,calc(100vw-2rem))] grid-cols-2 gap-2 rounded-xl border border-border-default bg-white p-3 shadow-card sm:left-auto sm:right-0">
+            <label className="flex min-w-0 flex-col gap-1 text-caption font-semibold text-bodySecondary">
+              From
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(event) => {
+                  setDateFrom(event.target.value);
+                  setPage(1);
+                  event.currentTarget.closest("details")?.removeAttribute("open");
+                }}
+                className="w-full min-w-0 rounded-md border border-border-default bg-white px-2 py-1.5 text-caption text-charcoal"
+              />
+            </label>
+            <label className="flex min-w-0 flex-col gap-1 text-caption font-semibold text-bodySecondary">
+              To
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(event) => {
+                  setDateTo(event.target.value);
+                  setPage(1);
+                  event.currentTarget.closest("details")?.removeAttribute("open");
+                }}
+                className="w-full min-w-0 rounded-md border border-border-default bg-white px-2 py-1.5 text-caption text-charcoal"
+              />
+            </label>
+          </div>
+        </details>
+      </div>
 
       {orders.isLoading ? (
         <p className="py-8 text-body text-bodySecondary">Loading order history…</p>
@@ -149,15 +158,14 @@ export default function AdminOrderHistoryPage() {
         <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(340px,0.9fr)]">
           <div className="min-w-0">
             <Card className="hidden min-w-0 overflow-hidden p-0 md:block">
-              <div className="overflow-x-auto">
+              <div className="max-h-[65vh] overflow-auto">
                 <table className="w-full min-w-[760px] border-collapse text-left text-body">
-                  <thead className="bg-cream-bg text-caption uppercase text-bodySecondary">
+                  <thead className="sticky top-0 z-10 bg-cream-bg text-caption uppercase text-bodySecondary">
                     <tr className="border-b border-border-default">
                       <th className="px-4 py-3 font-semibold">Order</th>
                       <th className="px-4 py-3 font-semibold">Date/Time</th>
                       <th className="px-4 py-3 font-semibold">Customer</th>
                       <th className="px-4 py-3 font-semibold">Type</th>
-                      <th className="px-4 py-3 font-semibold">Status</th>
                       <th className="px-4 py-3 text-right font-semibold">Total</th>
                     </tr>
                   </thead>
@@ -190,11 +198,6 @@ export default function AdminOrderHistoryPage() {
                               {order.orderType === "PICKUP" ? "Collection" : order.orderType === "DINE_IN" ? "Dine-in" : "Delivery"}
                             </span>
                           </td>
-                          <td className="whitespace-nowrap px-4 py-3">
-                            <span className={`rounded-full px-2.5 py-1 text-caption font-bold ${order.status === "COMPLETED" ? "bg-status-successBg text-emerald-600" : "bg-status-errorBg text-brand-red"}`}>
-                              {order.status.replaceAll("_", " ")}
-                            </span>
-                          </td>
                           <td className="whitespace-nowrap px-4 py-3 text-right font-bold">{order.total}</td>
                         </tr>
                       );
@@ -204,7 +207,7 @@ export default function AdminOrderHistoryPage() {
               </div>
             </Card>
 
-            <div className="space-y-3 md:hidden">
+            <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1 md:hidden">
               {list.map((order) => (
                 <Link
                   key={order.id}
@@ -216,9 +219,6 @@ export default function AdminOrderHistoryPage() {
                       <p className="font-heading font-bold text-charcoal">{order.orderNumber}</p>
                       <p className="mt-1 break-words text-body font-semibold">{order.customer.name}</p>
                     </div>
-                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-caption font-bold ${order.status === "COMPLETED" ? "bg-status-successBg text-emerald-600" : "bg-status-errorBg text-brand-red"}`}>
-                      {order.status.replaceAll("_", " ")}
-                    </span>
                   </div>
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border-default pt-3 text-caption text-bodySecondary">
                     <span>{new Date(order.createdAt).toLocaleString()}</span>

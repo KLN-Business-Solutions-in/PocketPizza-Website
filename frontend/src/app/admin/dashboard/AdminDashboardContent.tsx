@@ -117,6 +117,13 @@ export function AdminDashboardContent() {
     ? allBoardQueries.flatMap((query) => query.data ?? [])
     : boardQueries[statusFilter].data ?? []) as KanbanOrder[];
   const selectedFilterLabel = ORDER_FILTERS.find((filter) => filter.key === statusFilter)?.label ?? "All Orders";
+  const getMobileFilterCount = (key: StatusFilter) => {
+    const queries = key === "ALL" ? allBoardQueries : [boardQueries[key]];
+    if (queries.some((query) => query.isError)) return "!";
+    if (queries.some((query) => query.isPending)) return "…";
+    const count = queries.reduce((sum, query) => sum + (query.data?.length ?? 0), 0);
+    return queries.some((query) => query.data?.length === 100) ? `${count}+` : String(count);
+  };
   const detailTransitions = detail.data
     ? getOrderTransitions(detail.data.status, detail.data.orderType)
     : [];
@@ -172,24 +179,21 @@ export function AdminDashboardContent() {
               );
             })}
           </nav>
-          <div className="flex min-w-0 gap-2 overflow-x-auto pb-1 lg:hidden">
-            {ORDER_FILTERS.map((filter) => {
-              const active = statusFilter === filter.key;
-              return (
-                <button
-                  key={filter.key}
-                  type="button"
-                  onClick={() => setStatusFilter(filter.key)}
-                  className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-caption font-semibold transition-colors ${active ? "border-brand-red bg-brand-red text-white" : "border-border-default bg-white text-bodySecondary"}`}
-                >
-              <span className="whitespace-nowrap">{filter.label}</span>
-                  <span className={`rounded-full px-1.5 py-0.5 text-tag ${active ? "bg-white/20" : "bg-neutralTint"}`}>
-                    {filter.key === "ALL" ? <AllOrdersCount queries={allBoardQueries} /> : <StatusCount query={boardQueries[filter.key]} />}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          <label className="block lg:hidden" htmlFor="mobile-order-status-filter">
+            <span className="sr-only">Filter orders by status</span>
+            <select
+              id="mobile-order-status-filter"
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+              className="w-full rounded-lg border border-border-default bg-white px-3 py-2.5 text-body font-semibold text-charcoal focus:outline-none focus:ring-2 focus:ring-brand-red/20"
+            >
+              {ORDER_FILTERS.map((filter) => (
+                <option key={filter.key} value={filter.key}>
+                  {filter.label} ({getMobileFilterCount(filter.key)})
+                </option>
+              ))}
+            </select>
+          </label>
           <Link href="/admin/orders/history" className="mt-3 inline-flex text-caption font-semibold text-brand-red underline underline-offset-2">
             Older orders
           </Link>
