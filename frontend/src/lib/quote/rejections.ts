@@ -67,8 +67,8 @@ export function parseQuoteIssue(detail: string): QuoteIssue {
 
 /**
  * Pull every `items[N]` rejection out of an ApiError. Falls back to the
- * envelope message when there are no per-line details (e.g. the mock's
- * `{ field, message }` shape, or a generic 400).
+ * envelope message when there are no per-line details (e.g. a generic
+ * `{ field, message }` error shape, or a generic 400).
  */
 export function parseQuoteRejections(error: unknown): QuoteIssue[] {
   const api = error as ApiError | undefined;

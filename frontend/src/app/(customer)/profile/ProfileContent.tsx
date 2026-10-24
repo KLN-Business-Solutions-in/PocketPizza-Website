@@ -2,14 +2,21 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Card, EmptyState, ErrorState, Skeleton } from "@/components/ui/LayoutPrimitives";
+import { Card, ErrorState, Skeleton } from "@/components/ui/LayoutPrimitives";
 import { useToast } from "@/components/ui/ToastProvider";
-import { apiErrorMessage, useCustomerProfile, useUpdateProfile } from "@/lib/api/customer";
-import { useCustomerLogout, useCustomerSession } from "@/lib/api/customerAuth";
-import { useCurrentOrders } from "@/lib/api/orders";
+import {
+  apiErrorMessage,
+  useCreateAddress,
+  useCustomerProfile,
+  useDeleteAddress,
+  useUpdateAddress,
+  useUpdateProfile,
+} from "@/lib/api/customer";
+import { useCustomerLogout } from "@/lib/api/customerAuth";
+import { PasswordCard } from "@/components/profile/PasswordCard";
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString("en-IN", {
@@ -25,19 +32,109 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   return <h2 className="font-heading text-h4 font-bold text-charcoal">{children}</h2>;
 }
 
+type AddressDraft = {
+  line1: string;
+  line2: string;
+  landmark: string;
+  city: string;
+  pincode: string;
+};
+
+const EMPTY_ADDRESS: AddressDraft = {
+  line1: "",
+  line2: "",
+  landmark: "",
+  city: "",
+  pincode: "",
+};
+
+type AddressErrors = Partial<Record<keyof AddressDraft, string>>;
+
+function validateAddress(draft: AddressDraft): AddressErrors {
+  const errors: AddressErrors = {};
+  if (!draft.line1.trim()) errors.line1 = "Address line is required.";
+  if (!draft.city.trim()) errors.city = "City is required.";
+  if (!/^\d{6}$/.test(draft.pincode.trim())) errors.pincode = "Enter a 6-digit pincode.";
+  return errors;
+}
+
+function toCreateBody(draft: AddressDraft) {
+  return {
+    line1: draft.line1.trim(),
+    ...(draft.line2.trim() ? { line2: draft.line2.trim() } : {}),
+    ...(draft.landmark.trim() ? { landmark: draft.landmark.trim() } : {}),
+    city: draft.city.trim(),
+    pincode: draft.pincode.trim(),
+  };
+}
+
+function toUpdateBody(draft: AddressDraft) {
+  return {
+    line1: draft.line1.trim(),
+    line2: draft.line2.trim() || null,
+    landmark: draft.landmark.trim() || null,
+    city: draft.city.trim(),
+    pincode: draft.pincode.trim(),
+  };
+}
+
+function AddressForm({
+  initial,
+  saving,
+  onCancel,
+  onSubmit,
+}: {
+  initial?: Partial<AddressDraft>;
+  saving: boolean;
+  onCancel: () => void;
+  onSubmit: (draft: AddressDraft) => void;
+}) {
+  const [draft, setDraft] = useState<AddressDraft>({ ...EMPTY_ADDRESS, ...initial });
+  const [errors, setErrors] = useState<AddressErrors>({});
+  const setField = (key: keyof AddressDraft) => (event: React.ChangeEvent<HTMLInputElement>) => {
+    setDraft((previous) => ({ ...previous, [key]: event.target.value }));
+    setErrors((previous) => ({ ...previous, [key]: undefined }));
+  };
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const nextErrors = validateAddress(draft);
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length === 0) onSubmit(draft);
+  };
+
+  return (
+    <form onSubmit={submit} noValidate className="mt-4 space-y-4 rounded-lg border border-border-default bg-offWhiteAlt p-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Input label="Address line" aria-label="Address line" className="sm:col-span-2" value={draft.line1} error={errors.line1} maxLength={255} placeholder="Flat 203, Sai Residency" onChange={setField("line1")} />
+        <Input label="Apartment / floor (optional)" aria-label="Apartment / floor (optional)" className="sm:col-span-2" value={draft.line2} maxLength={255} onChange={setField("line2")} />
+        <Input label="City" aria-label="City" value={draft.city} error={errors.city} maxLength={100} placeholder="Pune" onChange={setField("city")} />
+        <Input label="Pincode" aria-label="Pincode" value={draft.pincode} error={errors.pincode} inputMode="numeric" maxLength={6} placeholder="411001" onChange={setField("pincode")} />
+        <Input label="Landmark (optional)" aria-label="Landmark (optional)" className="sm:col-span-2" value={draft.landmark} maxLength={255} placeholder="Near Park" onChange={setField("landmark")} />
+      </div>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Button type="submit" className="min-h-11 w-full sm:w-auto" isLoading={saving}>Save address</Button>
+        <Button type="button" className="min-h-11 w-full sm:w-auto" variant="ghost" disabled={saving} onClick={onCancel}>Cancel</Button>
+      </div>
+    </form>
+  );
+}
+
 export function ProfileContent() {
-  const session = useCustomerSession();
-  const phone = session.data?.loggedIn ? session.data.customer.phone : null;
   const profile = useCustomerProfile();
   const updateProfile = useUpdateProfile();
+  const createAddress = useCreateAddress();
+  const updateAddress = useUpdateAddress();
+  const deleteAddress = useDeleteAddress();
   const logout = useCustomerLogout();
-  const orders = useCurrentOrders(phone);
   const toast = useToast();
   const router = useRouter();
 
   const [nameEditing, setNameEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [nameError, setNameError] = useState<string | null>(null);
+  const [addingAddress, setAddingAddress] = useState(false);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const handleSaveName = async () => {
     const trimmed = nameDraft.trim();
@@ -88,20 +185,15 @@ export function ProfileContent() {
   }
 
   const { customer, addresses } = profile.data;
-  const orderList = [...(orders.data ?? [])]
-    .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
-    .slice(0, 5);
+  const addressesFull = addresses.length >= 10;
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 md:py-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-h2 font-bold text-charcoal">Profile</h1>
-        <Button variant="outline" size="sm" onClick={handleLogout} isLoading={logout.isPending}>
-          {logout.isPending ? "Logging out…" : "Log out"}
-        </Button>
       </div>
       <p className="mt-1 text-body text-bodySecondary">
-        Your account details, saved addresses and order history.
+        Your account details and saved addresses.
       </p>
 
       {customer.deletionRequestedAt && (
@@ -143,6 +235,7 @@ export function ProfileContent() {
                   <Button
                     variant="outline"
                     size="sm"
+                    className="min-h-11 shrink-0"
                     onClick={() => {
                       setNameDraft(customer.name);
                       setNameEditing(true);
@@ -178,11 +271,22 @@ export function ProfileContent() {
                         setNameError(null);
                       }}
                     >
-                      Cancel
+                      Discard
                     </Button>
                   </div>
                 </div>
               )}
+              <div className="mt-4 grid w-full grid-cols-1 gap-2.5 sm:flex sm:w-auto">
+                <Button
+                  variant="outline"
+                  className="h-14 w-full rounded-xl text-base sm:w-auto"
+                  onClick={handleLogout}
+                  isLoading={logout.isPending}
+                >
+                  {logout.isPending ? "Logging out…" : "Log out"}
+                </Button>
+                <PasswordCard />
+              </div>
             </div>
           </div>
         </Card>
@@ -192,113 +296,90 @@ export function ProfileContent() {
         <Card>
           <div className="flex items-center justify-between gap-3">
             <SectionTitle>Addresses</SectionTitle>
-            <Link
-              href="/settings#addresses"
-              className="text-caption font-semibold text-brand-red hover:underline"
-            >
-              Manage in Settings
-            </Link>
-          </div>
-          {addresses.length === 0 ? (
-            <div className="mt-3">
-              <EmptyState
-                title="No saved addresses"
-                description="Add delivery addresses from Settings and they will show up here."
-                action={
-                  <Link
-                    href="/settings#addresses"
-                    className="inline-flex items-center justify-center rounded-md bg-brand-red px-4 py-2.5 font-heading text-button font-semibold text-white transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-brand-red"
-                  >
-                    Add address
-                  </Link>
-                }
-              />
-            </div>
-          ) : (
-            <ul className="mt-3 space-y-2">
-              {addresses.map((address) => (
-                <li
-                  key={address.id}
-                  className="rounded-md border border-border-default bg-offWhiteAlt px-3.5 py-2.5"
-                >
-                  <p className="text-body text-charcoal">
-                    {address.line1}
-                    {address.line2 ? `, ${address.line2}` : ""}
-                    {address.landmark ? `, ${address.landmark}` : ""}
-                  </p>
-                  <p className="mt-0.5 text-caption text-bodySecondary">
-                    {address.city} — {address.pincode}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      </section>
-
-      <section className="mt-4">
-        <Card>
-          <div className="flex items-center justify-between gap-3">
-            <SectionTitle>Orders</SectionTitle>
-            {orders.data && (
-              <span className="text-caption text-bodySecondary">
-                {orders.data.length} {orders.data.length === 1 ? "order" : "orders"}
-              </span>
+            {!addressesFull && !addingAddress && editingAddressId === null && (
+              <Button
+                variant="outline"
+                className="min-h-11 shrink-0"
+                onClick={() => {
+                  setConfirmDeleteId(null);
+                  setAddingAddress(true);
+                }}
+              >
+                Add address
+              </Button>
             )}
           </div>
-          {orders.isLoading ? (
-            <div className="mt-3 space-y-2">
-              <Skeleton className="h-14 w-full" />
-              <Skeleton className="h-14 w-full" />
-            </div>
-          ) : orders.isError ? (
-            <div className="mt-3">
-              <ErrorState
-                message={apiErrorMessage(orders.error, "Couldn't load your orders.")}
-                onRetry={() => orders.refetch()}
-              />
-            </div>
-          ) : orderList.length === 0 ? (
-            <div className="mt-3">
-              <EmptyState
-                title="No orders yet"
-                description="When you place an order it will show up here."
-                action={
-                  <Link
-                    href="/menu"
-                    className="inline-flex items-center justify-center rounded-md bg-brand-red px-4 py-2.5 font-heading text-button font-semibold text-white transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-brand-red"
-                  >
-                    Browse the menu
-                  </Link>
-                }
-              />
-            </div>
-          ) : (
-            <ul className="mt-2 divide-y divide-border-default">
-              {orderList.map((order) => (
-                <li key={order.orderNumber}>
-                  <Link
-                    href={`/order/${order.publicToken}`}
-                    className="flex items-center justify-between gap-3 py-3 transition-colors hover:text-brand-red focus:outline-none focus:ring-2 focus:ring-brand-red"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-label font-medium text-charcoal">
-                        #{order.orderNumber}
-                      </p>
-                      <p className="mt-1 text-caption text-bodySecondary">
-                        {order.itemCount} {order.itemCount === 1 ? "item" : "items"} ·{" "}
-                        {formatDate(order.createdAt)}
-                      </p>
+          {addressesFull && <p className="mt-3 text-caption text-bodySecondary">Limit reached — you can keep 10 saved addresses.</p>}
+          {addingAddress && (
+            <AddressForm
+              saving={createAddress.isPending}
+              onCancel={() => setAddingAddress(false)}
+              onSubmit={(draft) => createAddress.mutate(toCreateBody(draft), {
+                onSuccess: () => {
+                  setAddingAddress(false);
+                  toast.push("Address saved.", "success");
+                },
+                onError: (error) => toast.push(apiErrorMessage(error, "Couldn't save address."), "error"),
+              })}
+            />
+          )}
+          {addresses.length === 0 && !addingAddress ? (
+            <p className="mt-3 rounded-lg border border-dashed border-border-default bg-offWhiteAlt px-4 py-8 text-center text-body text-bodySecondary">No saved addresses yet.</p>
+          ) : addresses.length > 0 ? (
+            <ul className="mt-3 space-y-2">
+              {addresses.map((address) => (
+                <li key={address.id} className="rounded-md border border-border-default bg-offWhiteAlt px-3.5 py-3">
+                  {editingAddressId === address.id ? (
+                    <AddressForm
+                      initial={{ line1: address.line1, line2: address.line2 ?? "", landmark: address.landmark ?? "", city: address.city, pincode: address.pincode }}
+                      saving={updateAddress.isPending}
+                      onCancel={() => setEditingAddressId(null)}
+                      onSubmit={(draft) => updateAddress.mutate({ id: address.id, ...toUpdateBody(draft) }, {
+                        onSuccess: () => {
+                          setEditingAddressId(null);
+                          toast.push("Address updated.", "success");
+                        },
+                        onError: (error) => toast.push(apiErrorMessage(error, "Couldn't update address."), "error"),
+                      })}
+                    />
+                  ) : (
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="break-words text-body text-charcoal">
+                          {address.line1}{address.line2 ? `, ${address.line2}` : ""}{address.landmark ? `, ${address.landmark}` : ""}
+                        </p>
+                        <p className="mt-0.5 text-caption text-bodySecondary">{address.city} — {address.pincode}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2 sm:shrink-0">
+                        <Button className="min-h-11" size="sm" variant="ghost" onClick={() => {
+                          setAddingAddress(false);
+                          setConfirmDeleteId(null);
+                          setEditingAddressId(address.id);
+                        }}>Edit</Button>
+                        {confirmDeleteId === address.id ? (
+                          <>
+                            <Button className="min-h-11" size="sm" variant="danger" isLoading={deleteAddress.isPending} onClick={() => deleteAddress.mutate(address.id, {
+                              onSuccess: () => {
+                                setConfirmDeleteId(null);
+                                toast.push("Address removed.", "success");
+                              },
+                              onError: (error) => toast.push(apiErrorMessage(error, "Couldn't remove address."), "error"),
+                            })}>Confirm delete</Button>
+                            <Button className="min-h-11" size="sm" variant="ghost" disabled={deleteAddress.isPending} onClick={() => setConfirmDeleteId(null)}>Cancel</Button>
+                          </>
+                        ) : (
+                          <Button className="min-h-11" size="sm" variant="ghost" onClick={() => {
+                            setEditingAddressId(null);
+                            setConfirmDeleteId(address.id);
+                          }}>Delete</Button>
+                        )}
+                      </div>
                     </div>
-                    <div className="shrink-0 text-right">
-                      <p className="text-label font-semibold text-charcoal">₹{order.total}</p>
-                      <p className="mt-1 text-caption text-bodySecondary">{order.status}</p>
-                    </div>
-                  </Link>
+                  )}
                 </li>
               ))}
             </ul>
-          )}
+          ) : null}
         </Card>
       </section>
     </div>

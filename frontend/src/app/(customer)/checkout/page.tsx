@@ -512,7 +512,7 @@ function CheckoutContent() {
                 : "Place Order"}
           </Button>
           <p className="text-caption text-mutedGray">
-            Pay at store. WhatsApp confirmation follows — its failure never cancels your order.
+            Pay at store. WhatsApp confirmation follows separately and does not affect your order.
             {livePriceChange && " The price changed, so press again to confirm the new total."}
           </p>
         </form>

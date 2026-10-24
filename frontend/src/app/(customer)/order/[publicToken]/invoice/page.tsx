@@ -33,6 +33,19 @@ export default function OrderInvoicePage() {
   }
   const inv = invoice.data;
   if (!inv) return null;
+  if (inv.status === "CANCELLED") {
+    return (
+      <div className="pb-12">
+        <Card>
+          <h1 className="font-heading text-h2 font-bold text-charcoal">{inv.orderNumber}</h1>
+          <p className="mt-3 text-body text-bodySecondary">This order is no longer active.</p>
+          <a href="/cart" className="mt-4 inline-block text-body font-semibold text-brand-red underline">
+            Back to your orders
+          </a>
+        </Card>
+      </div>
+    );
+  }
   const isDelivery = inv.orderType === "DELIVERY";
 
   return (

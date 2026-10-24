@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCurrentOrders, type CurrentOrder } from "@/lib/api/orders";
 import { ApiError } from "@/lib/api/client";
 import { useCartHydrated, useCartStore } from "@/lib/cart/store";
-import { formatOrderTimestamp, orderTypeLabel, statusLabel } from "@/lib/order/status";
+import { excludeCancelledOrders, formatOrderTimestamp, orderTypeLabel, statusLabel } from "@/lib/order/status";
 import { ErrorState, Skeleton } from "@/components/ui/LayoutPrimitives";
 
 const CURRENT_STATUSES = new Set<CurrentOrder["status"]>([
@@ -14,7 +14,7 @@ const CURRENT_STATUSES = new Set<CurrentOrder["status"]>([
   "READY",
   "OUT_FOR_DELIVERY",
 ]);
-const PAST_STATUSES = new Set<CurrentOrder["status"]>(["COMPLETED", "CANCELLED"]);
+const PAST_STATUSES = new Set<CurrentOrder["status"]>(["COMPLETED"]);
 
 function statusClasses(status: CurrentOrder["status"]): string {
   if (status === "COMPLETED") return "bg-status-successBg text-emerald-700";
@@ -122,13 +122,16 @@ export function CurrentOrdersSection() {
       />
     );
   } else {
-    const orders = ordersQuery.data ?? [];
+    const rawOrders = ordersQuery.data ?? [];
+    const orders = excludeCancelledOrders(rawOrders);
     const currentOrders = orders.filter((order) => CURRENT_STATUSES.has(order.status));
     const pastOrders = orders.filter((order) => PAST_STATUSES.has(order.status));
     content = orders.length === 0 ? (
       <div className="rounded-md border border-dashed border-border-default bg-cream-bg px-5 py-8 text-center">
-        <p className="font-heading font-bold text-charcoal">No orders yet</p>
-        <p className="mt-1 text-body text-bodySecondary">Orders you place will show up here.</p>
+        <p className="font-heading font-bold text-charcoal">
+          {rawOrders.length > 0 ? "No current or past orders to show." : "No orders yet"}
+        </p>
+        {rawOrders.length === 0 && <p className="mt-1 text-body text-bodySecondary">Orders you place will show up here.</p>}
       </div>
     ) : (
       <div className="space-y-5">
@@ -151,7 +154,7 @@ export function CurrentOrdersSection() {
   }
 
   return (
-    <section aria-labelledby="current-orders-title" className="space-y-4">
+    <section id="current-orders" aria-labelledby="current-orders-title" className="space-y-4">
       <div>
         <h2 id="current-orders-title" className="font-heading text-h3 font-bold text-charcoal">Your current orders</h2>
         <p className="mt-1 text-body text-bodySecondary">Follow the latest status of your orders.</p>

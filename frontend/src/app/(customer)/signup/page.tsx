@@ -3,13 +3,14 @@ import CustomerAuthForm from "@/components/auth/CustomerAuthForm";
 export default async function CustomerSignupPage({
   searchParams,
 }: {
-  searchParams: Promise<{ redirectTo?: string | string[] }>;
+  searchParams: Promise<{ next?: string | string[]; redirectTo?: string | string[] }>;
 }) {
-  const { redirectTo } = await searchParams;
+  const { next, redirectTo } = await searchParams;
 
   return (
     <CustomerAuthForm
       mode="signup"
+      next={typeof next === "string" ? next : null}
       redirectTo={typeof redirectTo === "string" ? redirectTo : null}
     />
   );

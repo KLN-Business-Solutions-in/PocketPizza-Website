@@ -17,17 +17,30 @@ import { Logo } from "@/components/ui/Logo";
 type AuthMode = "login" | "signup";
 type FieldErrors = Partial<Record<"name" | "phone" | "email" | "password", string>>;
 
-function getDestination(value: string | null): string {
+function isSafeDestination(value: string | null): string | null {
   if (
-    value &&
-    value.startsWith("/") &&
-    !value.startsWith("//") &&
-    !value.includes("\\") &&
-    !value.startsWith("/admin")
+    !value ||
+    value.length > 512 ||
+    /[\u0000-\u001F\u007F]/.test(value) ||
+    !value.startsWith("/") ||
+    value.startsWith("//") ||
+    value.includes("\\") ||
+    value.startsWith("/admin")
   ) {
-    return value;
+    return null;
   }
-  return "/";
+
+  try {
+    const url = new URL(value, "https://app.invalid");
+    if (url.origin !== "https://app.invalid") return null;
+    return url.pathname + url.search + url.hash;
+  } catch {
+    return null;
+  }
+}
+
+function getDestination(next: string | null, redirectTo: string | null): string {
+  return isSafeDestination(next) ?? isSafeDestination(redirectTo) ?? "/";
 }
 
 function Brand() {
@@ -74,14 +87,16 @@ function Field({
 
 export default function CustomerAuthForm({
   mode,
+  next = null,
   redirectTo = null,
 }: {
   mode: AuthMode;
+  next?: string | null;
   redirectTo?: string | null;
 }) {
   const isSignup = mode === "signup";
   const router = useRouter();
-  const destination = getDestination(redirectTo);
+  const destination = getDestination(next, redirectTo);
   const session = useCustomerSession();
   const login = useCustomerLogin();
   const signup = useCustomerSignup();
@@ -92,6 +107,7 @@ export default function CustomerAuthForm({
   const [showPassword, setShowPassword] = React.useState(false);
   const [fieldErrors, setFieldErrors] = React.useState<FieldErrors>({});
   const [banner, setBanner] = React.useState<React.ReactNode>(null);
+  const submitNavigationRef = React.useRef(false);
   const isPending = login.isPending || signup.isPending;
 
   // The server and the first client render must agree on the loading shell,
@@ -103,7 +119,7 @@ export default function CustomerAuthForm({
   );
 
   React.useEffect(() => {
-    if (session.data?.loggedIn) router.replace(destination);
+    if (session.data?.loggedIn && !submitNavigationRef.current) router.replace(destination);
   }, [destination, router, session.data]);
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -141,6 +157,7 @@ export default function CustomerAuthForm({
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
 
+    submitNavigationRef.current = true;
     try {
       if (isSignup) {
         await signup.mutateAsync({
@@ -154,6 +171,7 @@ export default function CustomerAuthForm({
       }
       router.replace(destination);
     } catch (error) {
+      submitNavigationRef.current = false;
       const apiError = error as ApiError;
       if (!isSignup && (apiError.status === 401 || apiError.code === "AUTHENTICATION_INVALID")) {
         setBanner("Invalid phone or password");
@@ -161,7 +179,7 @@ export default function CustomerAuthForm({
         setBanner("Too many attempts. Try again later.");
       } else if (isSignup && apiError.code === "ACCOUNT_EXISTS") {
         setBanner(
-          <>An account with this phone already exists. <Link href="/login" className="underline">Log in</Link></>,
+          <>An account with this phone already exists. <Link href={`/login?next=${encodeURIComponent(destination)}`} className="underline">Log in</Link></>,
         );
       } else if (isSignup && apiError.code === "EMAIL_EXISTS") {
         setFieldErrors((current) => ({ ...current, email: "This email is already registered." }));
@@ -242,9 +260,9 @@ export default function CustomerAuthForm({
 
           <p className="mt-6 text-center text-caption text-bodySecondary">
             {isSignup ? (
-              <>Already have an account? <Link href="/login" className="font-semibold text-brand-red hover:underline">Log in</Link></>
+              <>Already have an account? <Link href={`/login?next=${encodeURIComponent(destination)}`} className="font-semibold text-brand-red hover:underline">Log in</Link></>
             ) : (
-              <>New here? <Link href="/signup" className="font-semibold text-brand-red hover:underline">Create an account</Link></>
+              <>New here? <Link href={`/signup?next=${encodeURIComponent(destination)}`} className="font-semibold text-brand-red hover:underline">Create an account</Link></>
             )}
           </p>
         </section>
