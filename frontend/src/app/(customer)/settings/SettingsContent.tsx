@@ -122,7 +122,7 @@ export function SettingsContent() {
     <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 md:py-10">
       <h1 className="font-heading text-h2 font-bold text-charcoal">Settings</h1>
       <p className="mt-1 text-body text-bodySecondary">
-        Preferences, delivery addresses and account security.
+        Manage your preferences, appearance, and account deletion.
       </p>
 
       <section className="mt-6">

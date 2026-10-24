@@ -122,13 +122,16 @@ export function CurrentOrdersSection() {
       />
     );
   } else {
-    const orders = excludeCancelledOrders(ordersQuery.data ?? []);
+    const rawOrders = ordersQuery.data ?? [];
+    const orders = excludeCancelledOrders(rawOrders);
     const currentOrders = orders.filter((order) => CURRENT_STATUSES.has(order.status));
     const pastOrders = orders.filter((order) => PAST_STATUSES.has(order.status));
     content = orders.length === 0 ? (
       <div className="rounded-md border border-dashed border-border-default bg-cream-bg px-5 py-8 text-center">
-        <p className="font-heading font-bold text-charcoal">No orders yet</p>
-        <p className="mt-1 text-body text-bodySecondary">Orders you place will show up here.</p>
+        <p className="font-heading font-bold text-charcoal">
+          {rawOrders.length > 0 ? "No current or past orders to show." : "No orders yet"}
+        </p>
+        {rawOrders.length === 0 && <p className="mt-1 text-body text-bodySecondary">Orders you place will show up here.</p>}
       </div>
     ) : (
       <div className="space-y-5">

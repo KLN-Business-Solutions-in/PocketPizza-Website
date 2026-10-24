@@ -10,7 +10,8 @@ export default async function CustomerSignupPage({
   return (
     <CustomerAuthForm
       mode="signup"
-      redirectTo={typeof next === "string" ? next : typeof redirectTo === "string" ? redirectTo : null}
+      next={typeof next === "string" ? next : null}
+      redirectTo={typeof redirectTo === "string" ? redirectTo : null}
     />
   );
 }

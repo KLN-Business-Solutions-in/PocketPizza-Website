@@ -103,14 +103,14 @@ export default function AdminOrderHistoryPage() {
             Browse completed orders.
           </p>
         </div>
-        <details className="group relative shrink-0">
+        <details className="group relative ml-auto shrink-0 sm:ml-0">
           <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-lg border border-border-default bg-white px-3 py-2 text-caption font-semibold text-charcoal shadow-card hover:border-brand-red focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-red [&::-webkit-details-marker]:hidden">
             Date filters
             <svg aria-hidden="true" className="h-4 w-4 transition-transform group-open:rotate-180" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M5.22 7.47a.75.75 0 0 1 1.06 0L10 11.19l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 8.53a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
             </svg>
           </summary>
-          <div className="absolute left-0 right-auto z-30 mt-2 grid w-[min(21rem,calc(100vw-2rem))] grid-cols-2 gap-2 rounded-xl border border-border-default bg-white p-3 shadow-card sm:left-auto sm:right-0">
+          <div className="absolute left-auto right-0 z-30 mt-2 grid w-[min(21rem,calc(100vw-2rem))] grid-cols-1 gap-2 rounded-xl border border-border-default bg-white p-3 shadow-card sm:grid-cols-2">
             <label className="flex min-w-0 flex-col gap-1 text-caption font-semibold text-bodySecondary">
               From
               <input

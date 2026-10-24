@@ -52,7 +52,7 @@ type CountQuery = { data?: unknown[]; isPending: boolean; isError: boolean };
 
 function StatusCount({ query }: { query: CountQuery }) {
   if (query.isError) return <span title="Could not load this count" aria-label="Count unavailable">!</span>;
-  if (query.isPending) return <Skeleton aria-hidden="true" className="h-4 w-7 rounded-full" />;
+  if (query.isPending) return <span aria-label="Loading count" title="Loading count" className="inline-block h-2 w-2 animate-pulse rounded-full bg-current align-middle" />;
   const count = query.data?.length ?? 0;
   return <>{count === 100 ? "100+" : count}</>;
 }
@@ -61,12 +61,14 @@ function AllOrdersCount({ queries }: { queries: CountQuery[] }) {
   if (queries.some((query) => query.isError)) {
     return <span title="Some order counts could not be loaded" aria-label="Count unavailable">!</span>;
   }
-  if (queries.some((query) => query.isPending)) {
+  const hasData = queries.some((query) => query.data !== undefined);
+  const isPending = queries.some((query) => query.isPending);
+  if (!hasData && isPending) {
     return <Skeleton aria-hidden="true" className="h-4 w-7 rounded-full" />;
   }
   const count = queries.reduce((sum, query) => sum + (query.data?.length ?? 0), 0);
   const hasMore = queries.some((query) => query.data?.length === 100);
-  return <>{hasMore ? `${count}+` : count}</>;
+  return <>{hasMore ? `${count}+` : count}{isPending && <span aria-label="Some statuses are loading" title="Some statuses are loading" className="ml-1 inline-block h-2 w-2 animate-pulse rounded-full bg-current align-middle" />}</>;
 }
 
 export function AdminDashboardContent() {
@@ -80,7 +82,8 @@ export function AdminDashboardContent() {
   const boardQueries = useAdminBoardOrders(typeFilter);
   const allBoardQueries = BOARD_STATUSES.map((status) => boardQueries[status]);
   const selectedQueries = statusFilter === "ALL" ? allBoardQueries : [boardQueries[statusFilter]];
-  const isBoardLoading = selectedQueries.some((query) => query.isPending);
+  const hasSelectedQueryData = selectedQueries.some((query) => query.data !== undefined);
+  const isBoardLoading = !hasSelectedQueryData && selectedQueries.some((query) => query.isPending);
   const failedListQueries = selectedQueries.filter((query) => query.isError);
   const detail = useAdminOrderDetail(selectedId ?? undefined);
   const updateStatus = useUpdateOrderStatus(selectedId ?? "");

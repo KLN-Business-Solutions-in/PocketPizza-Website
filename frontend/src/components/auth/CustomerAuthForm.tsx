@@ -17,14 +17,19 @@ import { Logo } from "@/components/ui/Logo";
 type AuthMode = "login" | "signup";
 type FieldErrors = Partial<Record<"name" | "phone" | "email" | "password", string>>;
 
-function getDestination(value: string | null): string {
-  if (
+function isSafeDestination(value: string | null): value is string {
+  return Boolean(
     value &&
     value.startsWith("/") &&
     !value.startsWith("//") &&
     !value.includes("\\") &&
     !value.startsWith("/admin")
-  ) return value;
+  );
+}
+
+function getDestination(next: string | null, redirectTo: string | null): string {
+  if (isSafeDestination(next)) return next;
+  if (isSafeDestination(redirectTo)) return redirectTo;
   return "/";
 }
 
@@ -72,14 +77,16 @@ function Field({
 
 export default function CustomerAuthForm({
   mode,
+  next = null,
   redirectTo = null,
 }: {
   mode: AuthMode;
+  next?: string | null;
   redirectTo?: string | null;
 }) {
   const isSignup = mode === "signup";
   const router = useRouter();
-  const destination = getDestination(redirectTo);
+  const destination = getDestination(next, redirectTo);
   const session = useCustomerSession();
   const login = useCustomerLogin();
   const signup = useCustomerSignup();
@@ -243,9 +250,9 @@ export default function CustomerAuthForm({
 
           <p className="mt-6 text-center text-caption text-bodySecondary">
             {isSignup ? (
-              <>Already have an account? <Link href="/login" className="font-semibold text-brand-red hover:underline">Log in</Link></>
+              <>Already have an account? <Link href={`/login?next=${encodeURIComponent(destination)}`} className="font-semibold text-brand-red hover:underline">Log in</Link></>
             ) : (
-              <>New here? <Link href="/signup" className="font-semibold text-brand-red hover:underline">Create an account</Link></>
+              <>New here? <Link href={`/signup?next=${encodeURIComponent(destination)}`} className="font-semibold text-brand-red hover:underline">Create an account</Link></>
             )}
           </p>
         </section>
