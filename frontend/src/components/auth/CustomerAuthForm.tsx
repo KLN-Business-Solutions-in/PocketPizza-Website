@@ -17,20 +17,30 @@ import { Logo } from "@/components/ui/Logo";
 type AuthMode = "login" | "signup";
 type FieldErrors = Partial<Record<"name" | "phone" | "email" | "password", string>>;
 
-function isSafeDestination(value: string | null): value is string {
-  return Boolean(
-    value &&
-    value.startsWith("/") &&
-    !value.startsWith("//") &&
-    !value.includes("\\") &&
-    !value.startsWith("/admin")
-  );
+function isSafeDestination(value: string | null): string | null {
+  if (
+    !value ||
+    value.length > 512 ||
+    /[\u0000-\u001F\u007F]/.test(value) ||
+    !value.startsWith("/") ||
+    value.startsWith("//") ||
+    value.includes("\\") ||
+    value.startsWith("/admin")
+  ) {
+    return null;
+  }
+
+  try {
+    const url = new URL(value, "https://app.invalid");
+    if (url.origin !== "https://app.invalid") return null;
+    return url.pathname + url.search + url.hash;
+  } catch {
+    return null;
+  }
 }
 
 function getDestination(next: string | null, redirectTo: string | null): string {
-  if (isSafeDestination(next)) return next;
-  if (isSafeDestination(redirectTo)) return redirectTo;
-  return "/";
+  return isSafeDestination(next) ?? isSafeDestination(redirectTo) ?? "/";
 }
 
 function Brand() {
@@ -169,7 +179,7 @@ export default function CustomerAuthForm({
         setBanner("Too many attempts. Try again later.");
       } else if (isSignup && apiError.code === "ACCOUNT_EXISTS") {
         setBanner(
-          <>An account with this phone already exists. <Link href="/login" className="underline">Log in</Link></>,
+          <>An account with this phone already exists. <Link href={`/login?next=${encodeURIComponent(destination)}`} className="underline">Log in</Link></>,
         );
       } else if (isSignup && apiError.code === "EMAIL_EXISTS") {
         setFieldErrors((current) => ({ ...current, email: "This email is already registered." }));
